@@ -20,24 +20,35 @@ st.set_page_config(page_title="每日收盤價參考", page_icon="📅", layout=
 # --- 資料獲取函式 ---
 @st.cache_data(ttl=3600)
 def fetch_westmetall_daily():
-    """從 westmetall.com 抓取每日收盤價 (更穩健的版本)"""
+    """從 westmetall.com 抓取每日收盤價 (V5 - 釜底抽薪版)"""
     url = "https://www.westmetall.com/en/markdaten.php"
     try:
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
         response = requests.get(url, headers=headers, timeout=15)
         response.raise_for_status()
         
-        df = pd.read_html(response.text)[0]
+        # 讀取表格，不指定標頭，避免 pandas 誤判
+        df = pd.read_html(response.text, header=None)[0]
         
-        # 由於原始表格欄位混亂，我們手動定位並重新命名
-        df = df.rename(columns={df.columns[0]: '金屬', df.columns[2]: 'Settlement', df.columns[3]: '3 months'})
+        # 主動尋找 'Copper' 所在的列，作為資料的起點
+        start_row_index = -1
+        for index, row in df.iterrows():
+            if 'Copper' in str(row[0]):
+                start_row_index = index
+                break
         
-        # 找到 'Copper' 所在的列，並從那裡開始作為新的表格
-        copper_index = df[df['金屬'] == 'Copper'].index[0]
-        df = df.iloc[copper_index:].reset_index(drop=True)
+        if start_row_index == -1:
+            raise ValueError("無法在 Westmetall 表格中定位到 'Copper' 列。")
+            
+        # 從資料起點開始，重建一個乾淨的 DataFrame
+        df = df.iloc[start_row_index:]
         
-        # 只保留需要的欄位
-        df = df[['金屬', 'Settlement', '3 months']]
+        # 我們只需要原始表格的第 0, 2, 3 欄
+        df = df[[0, 2, 3]]
+        
+        # 為這個全新的、乾淨的表格設定欄位名稱
+        df.columns = ['金屬', 'Settlement', '3 months']
+        df = df.reset_index(drop=True)
         
         return df, "已從網路獲取最新數據"
     except Exception as e:
@@ -62,7 +73,7 @@ def fetch_bot_daily_fx():
 # --- 主程式 ---
 def main():
     st.title("📅 每日收盤價參考")
-    st.subheader("版本: V4 - 強制覆寫最終版") # 版本號，用來確認部署狀態
+    st.subheader("版本: V5 - 釜底抽薪最終版") # 版本號，用來確認部署狀態
     
     # --- 加載數據 ---
     df_westmetall, msg_westmetall = fetch_westmetall_daily()
