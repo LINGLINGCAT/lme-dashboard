@@ -35,7 +35,7 @@ def fetch_lme_data():
         return pd.DataFrame() # 返回空的DataFrame以避免中斷
 
 def fetch_bot_fx_data():
-    """從台灣銀行抓取外匯數據"""
+    """從台灣銀行抓取外匯數據，並只保留 USD 和 CNY"""
     url = "https://rate.bot.com.tw/xrt?Lang=zh-TW"
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     try:
@@ -45,8 +45,17 @@ def fetch_bot_fx_data():
         df = tables[0]
         df = df.iloc[:, [0, 1, 2, 3, 4]]
         df.columns = ['幣別', '現金買入', '現金賣出', '即期買入', '即期賣出']
-        df['幣別'] = df['幣別'].str.extract(r'([A-Z]{3})')
-        return df
+        
+        # 提取貨幣代碼
+        df['幣別代碼'] = df['幣別'].str.extract(r'([A-Z]{3})')
+        
+        # 篩選出 USD 和 CNY
+        target_currencies = ['USD', 'CNY']
+        df_filtered = df[df['幣別代碼'].isin(target_currencies)].copy()
+        
+        # 返回整理後的 DataFrame
+        return df_filtered[['幣別', '現金買入', '現金賣出', '即期買入', '即期賣出']]
+
     except Exception as e:
         # st.error(f"抓取外匯數據失敗: {e}")
         return pd.DataFrame()
@@ -64,7 +73,7 @@ with col1:
     lme_placeholder = st.empty()
 
 with col2:
-    st.subheader("台灣銀行即期匯率")
+    st.subheader("台灣銀行即期匯率 (USD/CNY)")
     fx_placeholder = st.empty()
 
 # ----------------------------
