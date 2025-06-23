@@ -20,37 +20,40 @@ st.set_page_config(page_title="每日收盤價參考", page_icon="📅", layout=
 # --- 資料獲取函式 ---
 @st.cache_data(ttl=3600)
 def fetch_westmetall_daily():
-    """從 westmetall.com 抓取每日收盤價 (V5 - 釜底抽薪版)"""
+    """從 westmetall.com 抓取每日收盤價 (V7 - 採用 BeautifulSoup 穩定解析)"""
     url = "https://www.westmetall.com/en/markdaten.php"
     try:
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
         response = requests.get(url, headers=headers, timeout=15)
         response.raise_for_status()
         
-        # 讀取表格，不指定標頭，避免 pandas 誤判
-        df = pd.read_html(response.text, header=None)[0]
+        soup = BeautifulSoup(response.text, "html.parser")
+        table = soup.find("table")
+        rows = table.find_all("tr")
         
-        # 主動尋找 'Copper' 所在的列，作為資料的起點
-        start_row_index = -1
-        for index, row in df.iterrows():
-            if 'Copper' in str(row[0]):
-                start_row_index = index
-                break
+        data = []
+        # 從第二行開始讀取，跳過標題行
+        for row in rows[1:]:
+            cols = row.find_all("td")
+            if len(cols) >= 4: # 確保有足夠的欄位
+                metal = cols[0].get_text(strip=True)
+                # Westmetall 的 Settlement 在第二欄(index 1)，3-months 在第三欄(index 2)
+                settlement = cols[1].get_text(strip=True)
+                three_months = cols[2].get_text(strip=True)
+                
+                # 只處理包含 Copper, Tin, Zinc 的資料
+                if any(m in metal for m in ['Copper', 'Tin', 'Zinc']):
+                    data.append({
+                        "金屬": metal,
+                        "Settlement": settlement,
+                        "3 months": three_months,
+                    })
         
-        if start_row_index == -1:
-            raise ValueError("無法在 Westmetall 表格中定位到 'Copper' 列。")
+        if not data:
+            raise ValueError("無法從 Westmetall 解析出任何 LME 數據。")
             
-        # 從資料起點開始，重建一個乾淨的 DataFrame
-        df = df.iloc[start_row_index:]
-        
-        # 我們只需要原始表格的第 0, 2, 3 欄
-        df = df[[0, 2, 3]]
-        
-        # 為這個全新的、乾淨的表格設定欄位名稱
-        df.columns = ['金屬', 'Settlement', '3 months']
-        df = df.reset_index(drop=True)
-        
-        return df, "已從網路獲取最新數據"
+        df = pd.DataFrame(data)
+        return df, "已從網路獲取最新數據 (BeautifulSoup)"
     except Exception as e:
         return pd.DataFrame(), f"Westmetall 數據獲取失敗: {e}"
 
@@ -61,8 +64,10 @@ def fetch_bot_daily_fx():
     try:
         response = requests.get(url, timeout=15)
         response.raise_for_status()
-        tables = pd.read_html(io.StringIO(response.text))
+        # 採用您驗證過的 header=0 讀取方式，更簡潔可靠
+        tables = pd.read_html(io.StringIO(response.text), header=0)
         df = tables[0]
+        # 表格清理
         df.columns = ['幣別', '現金買入', '現金賣出', '即期買入', '即期賣出'] + list(df.columns[5:])
         clean_df = df[['幣別', '即期買入', '即期賣出']].copy()
         clean_df['幣別代碼'] = clean_df['幣別'].str.extract(r'([A-Z]{3})')
@@ -73,7 +78,7 @@ def fetch_bot_daily_fx():
 # --- 主程式 ---
 def main():
     st.title("📅 每日收盤價參考")
-    st.subheader("版本: V5 - 釜底抽薪最終版") # 版本號，用來確認部署狀態
+    st.subheader("版本: V7 - 最終穩定版") # 版本號，用來確認部署狀態
     
     # --- 加載數據 ---
     df_westmetall, msg_westmetall = fetch_westmetall_daily()
@@ -163,4 +168,3 @@ def save_to_history(df, date_col="日期"):
 
 if __name__ == "__main__":
     main()
-
