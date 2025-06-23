@@ -30,21 +30,38 @@ def fetch_bot_realtime_fx():
     url = "https://rate.bot.com.tw/xrt?Lang=zh-TW"
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     try:
-        # 參考 lme_to_csv.py 的成功邏輯，直接從 URL 讀取並指定多層表頭
         tables = pd.read_html(url, header=[0, 1])
         df = tables[0]
-        
-        # --- 最強健的資料清理 (同步 lme_to_csv.py) ---
-        # 1. 根據 MultiIndex 找到正確的欄位
-        currency_col = [col for col in df.columns if '幣別' in col[0]][0]
-        buy_col =      [col for col in df.columns if '即期匯率' in col[0] and '本行買入' in col[1]][0]
-        sell_col =     [col for col in df.columns if '即期匯率' in col[0] and '本行賣出' in col[1]][0]
 
-        # 2. 用找到的欄位建立乾淨的 DataFrame
-        clean_df = df[[currency_col, buy_col, sell_col]].copy()
+        # --- 更穩健的欄位尋找邏輯 (參考 lme_to_csv.py) ---
+        currency_col = [col for col in df.columns if '幣別' in col[0]][0]
+        
+        # 尋找所有可能的買入/賣出欄位
+        buy_cols = [col for col in df.columns if col[1] == '本行買入']
+        sell_cols = [col for col in df.columns if col[1] == '本行賣出']
+
+        # 定義一個輔助函式，用來從候選欄位中挑選出正確的"即期"欄位
+        def pick_spot_col(cols_to_check, df_to_check):
+            for col in cols_to_check:
+                # 轉換為數字，同時處理非數字的 '-' 字元
+                vals = pd.to_numeric(df_to_check[col], errors='coerce')
+                # 判斷是否為有效的匯率欄位
+                if vals.notna().sum() > 0 and vals.max() < 100 and vals.min() > 0.1:
+                    return col
+            return None 
+
+        spot_buy_col = pick_spot_col(buy_cols, df)
+        spot_sell_col = pick_spot_col(sell_cols, df)
+
+        # 確保我們找到了所有需要的欄位
+        if not (currency_col and spot_buy_col and spot_sell_col):
+            raise ValueError("無法從台銀網站自動判斷正確的即期匯率欄位。")
+
+        # 用找到的欄位建立乾淨的 DataFrame
+        clean_df = df[[currency_col, spot_buy_col, spot_sell_col]].copy()
         clean_df.columns = ['幣別', '即期買入', '即期賣出']
         
-        # 3. 清理幣別，只留下英文代碼
+        # 清理幣別，只留下英文代碼
         clean_df['幣別代碼'] = clean_df['幣別'].str.extract(r'([A-Z]{3})')
         
         return clean_df, None
