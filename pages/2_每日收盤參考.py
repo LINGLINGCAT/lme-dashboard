@@ -33,15 +33,18 @@ def fetch_westmetall_daily():
 
 @st.cache_data(ttl=3600) # 快取 1 小時
 def fetch_bot_daily_fx():
-    """從台灣銀行抓取每日匯率數據"""
+    """從台灣銀行抓取每日匯率數據，並清理格式"""
     url = "https://rate.bot.com.tw/xrt/all/day"
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     try:
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
         df = pd.read_html(io.StringIO(response.text), header=0)[0]
+        # 精確選取前 5 欄，並重新命名
         df = df.iloc[:, [0, 3, 4]]
         df.columns = ['幣別', '即期買入', '即期賣出']
+        # 清理幣別欄位，只留下英文縮寫和中文名稱
+        df['幣別'] = df['幣別'].str.split().str[0] + ' ' + df['幣別'].str.split().str[1]
         df['幣別代碼'] = df['幣別'].str.extract(r'([A-Z]{3})')
         return df
     except Exception:
