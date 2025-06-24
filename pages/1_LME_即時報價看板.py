@@ -27,30 +27,42 @@ def fetch_lme_realtime():
         return pd.DataFrame(), f"LME 載入失敗: {e}"
 
 def fetch_bot_realtime_fx():
-    """從台灣銀行抓取即時匯率 (V7 - 採用經驗證的 header=[0,1] 解析)"""
+    """從台灣銀行抓取即時匯率 (V8 - 採用 lme_to_csv.py 的穩健邏輯)"""
     url = "https://rate.bot.com.tw/xrt?Lang=zh-TW"
     try:
-        # 使用 header=[0, 1] 直接讓 pandas 處理 MultiIndex，這是最穩定的作法
         tables = pd.read_html(requests.get(url).text, header=[0, 1])
         df = tables[0]
 
-        # 搜尋我們需要的欄位
-        currency_col = [col for col in df.columns if '幣別' in col[0]][0]
-        
-        # 尋找包含'即期'和'買入'/'賣出'的欄位
-        spot_buy_col = [col for col in df.columns if '即期' in col[0] and '買入' in col[1]][0]
-        spot_sell_col = [col for col in df.columns if '即期' in col[0] and '賣出' in col[1]][0]
+        # --- 來自 lme_to_csv.py 的穩健欄位挑選邏輯 ---
+        def pick_spot_col(cols_to_check, df_to_check):
+            """從候選欄位中，根據數值範圍挑選出'即期'匯率欄。"""
+            for col in cols_to_check:
+                vals = pd.to_numeric(df_to_check[col], errors='coerce')
+                # 檢查數值是否在一個合理的即期匯率範圍內 (e.g. >0.1, <100)
+                if vals.notna().sum() > 0 and vals.max() < 100 and vals.min() > 0.1:
+                    return col
+            return None
 
-        # 建立一個乾淨的 DataFrame
+        # 1. 找到所有名為'本行買入'和'本行賣出'的欄位 (這會包含現金和即期)
+        buy_cols = [col for col in df.columns if '本行買入' in col[1]]
+        sell_cols = [col for col in df.columns if '本行賣出' in col[1]]
+
+        # 2. 使用輔助函式從候選者中挑出正確的即期匯率欄位
+        spot_buy_col = pick_spot_col(buy_cols, df)
+        spot_sell_col = pick_spot_col(sell_cols, df)
+
+        # 3. 找到幣別欄位
+        currency_col = [col for col in df.columns if '幣別' in col[0]][0]
+
+        if not all([currency_col, spot_buy_col, spot_sell_col]):
+             raise ValueError("無法從台銀網站上定位到必要的即期匯率欄位。")
+
+        # 4. 建立乾淨的 DataFrame
         clean_df = df[[currency_col, spot_buy_col, spot_sell_col]].copy()
-        
-        # 簡化欄位名稱
         clean_df.columns = ['幣別', '即期買入', '即期賣出']
-        
-        # 提取貨幣代碼 (例如, 從 "美金 (USD)" 中提取 "USD")
         clean_df['幣別代碼'] = clean_df['幣別'].str.extract(r'([A-Z]{3})')
-        
-        return clean_df, "已從網路獲取最新數據"
+
+        return clean_df, "已從網路獲取最新數據 (V8)"
     except Exception as e:
         error_details = f"Traceback:\n{traceback.format_exc()}"
         return pd.DataFrame(), f"台銀即時匯率載入失敗:\n\n```\n{error_details}\n```"
