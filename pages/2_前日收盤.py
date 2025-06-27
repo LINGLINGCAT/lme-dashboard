@@ -89,8 +89,8 @@ def fetch_bot_daily_fx():
 
 # --- 主程式 ---
 def main():
-    st.title("📅 前日收盤價參考")
-    st.subheader("版本: V8 - 最終穩定版")
+    st.title("📅 前日收盤價")
+    st.subheader("版本: V9")
     
     # --- 加載數據 ---
     df_westmetall, msg_westmetall = fetch_westmetall_lme_data()
@@ -104,7 +104,7 @@ def main():
         if not df_westmetall.empty:
             st.dataframe(df_westmetall, use_container_width=True, hide_index=True)
     with col2:
-        st.subheader("台銀每日匯率 (USD/CNY)")
+        st.subheader("台銀歷史匯率 (USD/CNY)")
         df_fx_filtered = df_fx_daily_all[df_fx_daily_all['幣別'].str.contains("美金|人民幣|USD|CNY")]
         if not df_fx_filtered.empty:
             st.dataframe(
