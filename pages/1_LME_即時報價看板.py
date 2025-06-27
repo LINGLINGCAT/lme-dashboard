@@ -97,6 +97,46 @@ while True:
         elif not df_fx_all.empty:
             df_fx_filtered = df_fx_all[df_fx_all['幣別代碼'].isin(['USD', 'CNY'])]
             st.dataframe(df_fx_filtered[['幣別代碼', '即期買入', '即期賣出']].rename(columns={'幣別代碼': '幣別'}), height=500, use_container_width=True, hide_index=True)
+
+            # 取得美金那一列
+            usd_row = df_fx_all[df_fx_all['幣別代碼'] == 'USD']
+            spot_buy = pd.to_numeric(usd_row['即期買入'].iloc[0], errors='coerce')
+            spot_sell = pd.to_numeric(usd_row['即期賣出'].iloc[0], errors='coerce')
+            usd_mid_rate = (spot_buy + spot_sell) / 2
+
+            # --- 3M價格試算 ---
+            try:
+                # 1. LME金屬最新價
+                df_lme_calc = df_lme.copy()
+                df_lme_calc.set_index('名稱', inplace=True)
+                for col in ['最新價']:
+                    df_lme_calc[col] = pd.to_numeric(df_lme_calc[col], errors='coerce')
+
+                copper_3m = df_lme_calc.loc['LME銅', '最新價']
+                tin_3m = df_lme_calc.loc['LME錫', '最新價']
+                zinc_3m = df_lme_calc.loc['LME鋅', '最新價']
+
+                # 2. 計算CSP價格
+                price_phosphor = (copper_3m * 0.94 + tin_3m * 0.06) / 1000 * usd_mid_rate
+                price_bronze = (copper_3m * 0.65 + zinc_3m * 0.35) / 1000 * usd_mid_rate
+                price_red_copper = copper_3m / 1000 * usd_mid_rate
+                price_tin = tin_3m
+                price_zinc = zinc_3m
+
+                csp_data = {
+                    '磷': f"NT${price_phosphor:,.2f}",
+                    '青': f"NT${price_bronze:,.2f}",
+                    '紅': f"NT${price_red_copper:,.2f}",
+                    '錫': f"US${price_tin:,.2f}",
+                    '鋅': f"US${price_zinc:,.2f}"
+                }
+
+                st.markdown("---")
+                st.subheader("3M價格試算")
+                st.metric(label="美金中間匯率", value=f"{usd_mid_rate:.4f}")
+                st.dataframe(pd.DataFrame([csp_data]), use_container_width=True, hide_index=True)
+            except Exception as e:
+                st.error(f"3M價格試算失敗: {e}")
         else:
             st.warning("無法載入台銀即時匯率。")
 
