@@ -72,6 +72,8 @@ def fetch_bot_daily_fx():
         df.columns = ['幣別', '現金買入', '現金賣出', '即期買入', '即期賣出'] + list(df.columns[5:])
         clean_df = df[['幣別', '即期買入', '即期賣出']].copy()
         clean_df['幣別代碼'] = clean_df['幣別'].str.extract(r'([A-Z]{3})')
+        clean_df['日期'] = datetime.now().strftime('%Y-%m-%d')
+        clean_df['抓取時間'] = datetime.now().strftime('%H:%M:%S')
         return clean_df, "已從網路獲取最新數據"
     except Exception as e:
         return pd.DataFrame(), f"台銀匯率數據獲取失敗: {e}"
