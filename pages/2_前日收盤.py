@@ -59,21 +59,32 @@ def fetch_westmetall_lme_data():
 
 @st.cache_data(ttl=3600)
 def fetch_bot_daily_fx():
-    """從台灣銀行抓取每日匯率"""
+    """從台灣銀行抓取每日匯率，正確解析掛牌日期與時間"""
     url = "https://rate.bot.com.tw/xrt/all/day"
     try:
         response = requests.get(url, timeout=15)
         response.raise_for_status()
-        # 採用您驗證過的 header=0 讀取方式，更簡潔可靠
-        tables = pd.read_html(io.StringIO(response.text), header=0)
+        html = response.text
+
+        # 1. 用正則表達式抓取掛牌日期（格式如：2025/06/26 16:02）
+        date_match = re.search(r'掛牌日期[:：]\\s*(\\d{4}/\\d{2}/\\d{2} \\d{2}:\\d{2})', html)
+        if date_match:
+            fx_date = date_match.group(1)
+            fx_date_only = fx_date.split(' ')[0]
+            fx_time_only = fx_date.split(' ')[1]
+        else:
+            fx_date_only = datetime.now().strftime('%Y-%m-%d')
+            fx_time_only = datetime.now().strftime('%H:%M:%S')
+
+        # 2. 讀取表格
+        tables = pd.read_html(io.StringIO(html), header=0)
         df = tables[0]
-        # 表格清理
         df.columns = ['幣別', '現金買入', '現金賣出', '即期買入', '即期賣出'] + list(df.columns[5:])
         clean_df = df[['幣別', '即期買入', '即期賣出']].copy()
         clean_df['幣別代碼'] = clean_df['幣別'].str.extract(r'([A-Z]{3})')
-        clean_df['日期'] = datetime.now().strftime('%Y-%m-%d')
-        clean_df['抓取時間'] = datetime.now().strftime('%H:%M:%S')
-        return clean_df, "已從網路獲取最新數據"
+        clean_df['掛牌日期'] = fx_date_only
+        clean_df['掛牌時間'] = fx_time_only
+        return clean_df, f"已從網路獲取最新數據（掛牌日期：{fx_date_only} {fx_time_only}）"
     except Exception as e:
         return pd.DataFrame(), f"台銀匯率數據獲取失敗: {e}"
 
