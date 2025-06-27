@@ -59,22 +59,22 @@ def fetch_westmetall_lme_data():
 
 @st.cache_data(ttl=3600)
 def fetch_bot_daily_fx():
-    """從台灣銀行抓取每日匯率，正確解析掛牌日期與時間"""
+    """從台灣銀行抓取每日匯率，正確解析掛牌時間（如 2025/06/26 16:02）"""
     url = "https://rate.bot.com.tw/xrt/all/day"
     try:
         response = requests.get(url, timeout=15)
         response.raise_for_status()
         html = response.text
 
-        # 1. 用正則表達式抓取掛牌日期（格式如：2025/06/26 16:02）
-        date_match = re.search(r'掛牌日期[:：]\\s*(\\d{4}/\\d{2}/\\d{2} \\d{2}:\\d{2})', html)
+        # 1. 用正則表達式抓取掛牌時間（格式如：2025/06/26 16:02）
+        date_match = re.search(r'掛牌時間[：:]\s*(\d{4}/\d{2}/\d{2} \d{2}:\d{2})', html)
+        if not date_match:
+            # 有時候會寫成「掛牌日期」
+            date_match = re.search(r'掛牌日期[：:]\s*(\d{4}/\d{2}/\d{2} \d{2}:\d{2})', html)
         if date_match:
-            fx_date = date_match.group(1)
-            fx_date_only = fx_date.split(' ')[0]
-            fx_time_only = fx_date.split(' ')[1]
+            fx_datetime = date_match.group(1)
         else:
-            fx_date_only = datetime.now().strftime('%Y-%m-%d')
-            fx_time_only = datetime.now().strftime('%H:%M:%S')
+            fx_datetime = datetime.now().strftime('%Y/%m/%d %H:%M')
 
         # 2. 讀取表格
         tables = pd.read_html(io.StringIO(html), header=0)
@@ -82,9 +82,8 @@ def fetch_bot_daily_fx():
         df.columns = ['幣別', '現金買入', '現金賣出', '即期買入', '即期賣出'] + list(df.columns[5:])
         clean_df = df[['幣別', '即期買入', '即期賣出']].copy()
         clean_df['幣別代碼'] = clean_df['幣別'].str.extract(r'([A-Z]{3})')
-        clean_df['掛牌日期'] = fx_date_only
-        clean_df['掛牌時間'] = fx_time_only
-        return clean_df, f"已從網路獲取最新數據（掛牌日期：{fx_date_only} {fx_time_only}）"
+        clean_df['掛牌時間'] = fx_datetime  # 直接合併日期與時間
+        return clean_df, f"已從網路獲取最新數據（掛牌時間：{fx_datetime}）"
     except Exception as e:
         return pd.DataFrame(), f"台銀匯率數據獲取失敗: {e}"
 
@@ -109,9 +108,7 @@ def main():
         df_fx_filtered = df_fx_daily_all[df_fx_daily_all['幣別'].str.contains("美金|人民幣|USD|CNY")]
         if not df_fx_filtered.empty:
             st.dataframe(
-                df_fx_filtered[['幣別', '即期買入', '即期賣出', '掛牌日期', '掛牌時間']].rename(
-                    columns={'幣別': '幣別', '即期買入': '即期買入', '即期賣出': '即期賣出', '掛牌日期': '掛牌日期', '掛牌時間': '掛牌時間'}
-                ),
+                df_fx_filtered[['幣別', '即期買入', '即期賣出', '掛牌時間']],
                 use_container_width=True,
                 hide_index=True
             )
