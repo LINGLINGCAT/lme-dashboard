@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 import io
 from pathlib import Path
 import time
+import re
 
 # --- 設定 ---
 DATA_DIR = Path("data")
@@ -27,6 +28,16 @@ def fetch_westmetall_lme_data():
     soup = BeautifulSoup(response.text, "html.parser")
     table = soup.find("table")
     rows = table.find_all("tr")
+    
+    # 1. 先從表格的 <th> 標籤中抓取來源日期（如 25. June 2025）
+    date_str = ""
+    ths = table.find_all("th")
+    for th in ths:
+        m = re.search(r"\d{1,2}\.\s*\w+\s*\d{4}", th.get_text())
+        if m:
+            date_str = m.group(0)
+            break
+
     data = []
     for row in rows[1:]:
         cols = row.find_all("td")
@@ -34,15 +45,17 @@ def fetch_westmetall_lme_data():
             metal = cols[0].get_text(strip=True)
             settlement_kasse = cols[1].get_text(strip=True)
             three_months = cols[2].get_text(strip=True)
+            # 2. 將來源日期加入每一筆資料
             data.append({
                 "金屬": metal,
                 "Settlement Kasse": settlement_kasse,
                 "3 months": three_months,
+                "來源日期": date_str,
                 "抓取時間": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 "資料來源": "Westmetall"
             })
     df = pd.DataFrame(data)
-    return df, "已從網路獲取最新數據 (BeautifulSoup)"
+    return df, f"已從網路獲取最新數據 (BeautifulSoup, 日期: {date_str})"
 
 @st.cache_data(ttl=3600)
 def fetch_bot_daily_fx():
