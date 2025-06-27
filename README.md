@@ -2,6 +2,37 @@
 
 一個免費且自動化的倫敦金屬交易所(LME)報價系統，包含即時報價顯示、歷史數據記錄和計算工具。
 
+## 如何推送程式碼並自動更新網頁
+
+1. **打開 Git Bash 或終端機**
+2. **切換到專案資料夾**
+   ```bash
+   cd /d/ANACONDA/lme-dashboard
+   ```
+3. **檢查目前狀態**
+   ```bash
+   git status
+   ```
+4. **加入你修改的檔案**
+   ```bash
+   git add .
+   # 或只加特定檔案
+   # git add pages/2_前日收盤.py
+   ```
+5. **提交(commit)更改**
+   ```bash
+   git commit -m "說明你的修改內容"
+   ```
+6. **推送(push)到 GitHub**
+   ```bash
+   git push
+   ```
+   > 第一次 push 會要求你登入 GitHub（用瀏覽器或 token）。
+
+7. **Streamlit Cloud 會自動偵測到 GitHub 有新 commit，幾分鐘內自動重新部署你的網頁。**
+
+---
+
 ## 系統架構
 
 ```mermaid

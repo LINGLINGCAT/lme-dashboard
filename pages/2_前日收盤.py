@@ -15,7 +15,8 @@ BOT_CACHE = DATA_DIR / "bot_cache.csv"
 HISTORY_FILE = DATA_DIR / "csp_history.csv"
 
 # --- 頁面設定 ---
-st.set_page_config(page_title="每日收盤價參考", page_icon="📅", layout="wide")
+st.set_page_config(page_title="前日收盤", page_icon="📅", layout="wide")
+st.title("📅 前日收盤")
 
 # --- 資料獲取函式 ---
 @st.cache_data(ttl=3600)
@@ -88,14 +89,20 @@ def main():
 
     col1, col2 = st.columns(2)
     with col1:
-        st.subheader("Westmetall LME 收盤價")
+        st.subheader("Westmetall LME 前日收盤價")
         if not df_westmetall.empty:
             st.dataframe(df_westmetall, use_container_width=True, hide_index=True)
     with col2:
         st.subheader("台銀每日匯率 (USD/CNY)")
-        if not df_fx_daily_all.empty:
-            df_fx_filtered = df_fx_daily_all[df_fx_daily_all['幣別代碼'].isin(['USD', 'CNY'])]
-            st.dataframe(df_fx_filtered[['幣別代碼', '即期買入', '即期賣出']].rename(columns={'幣別代碼': '幣別'}), use_container_width=True, hide_index=True)
+        df_fx_filtered = df_fx_daily_all[df_fx_daily_all['幣別'].str.contains("美金|人民幣|USD|CNY")]
+        if not df_fx_filtered.empty:
+            st.dataframe(
+                df_fx_filtered[['幣別', '即期買入', '即期賣出', '日期', '抓取時間']].rename(
+                    columns={'幣別': '幣別', '即期買入': '即期買入', '即期賣出': '即期賣出', '日期': '掛牌日期', '抓取時間': '掛牌時間'}
+                ),
+                use_container_width=True,
+                hide_index=True
+            )
 
     # --- CSP 價格計算機 ---
     st.markdown("---")
@@ -106,7 +113,7 @@ def main():
     else:
         try:
             # 1. 計算美金中間匯率
-            usd_row = df_fx_daily_all[df_fx_daily_all['幣別代碼'] == 'USD']
+            usd_row = df_fx_daily_all[df_fx_daily_all['幣別'].str.contains("美金|USD")]
             spot_buy = pd.to_numeric(usd_row['即期買入'].iloc[0], errors='coerce')
             spot_sell = pd.to_numeric(usd_row['即期賣出'].iloc[0], errors='coerce')
             usd_mid_rate = (spot_buy + spot_sell) / 2
