@@ -16,47 +16,33 @@ HISTORY_FILE = DATA_DIR / "csp_history.csv"
 
 # --- 頁面設定 ---
 st.set_page_config(page_title="前日收盤", page_icon="📅", layout="wide")
-st.title("📅 前日收盤")
 
 # --- 資料獲取函式 ---
 @st.cache_data(ttl=3600)
-def fetch_westmetall_daily():
-    """從 westmetall.com 抓取每日收盤價 (V7 - 採用 BeautifulSoup 穩定解析)"""
-    url = "https://www.westmetall.com/en/markdaten.php"
-    try:
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-        response = requests.get(url, headers=headers, timeout=15)
-        response.raise_for_status()
-        
-        soup = BeautifulSoup(response.text, "html.parser")
-        table = soup.find("table")
-        rows = table.find_all("tr")
-        
-        data = []
-        # 從第二行開始讀取，跳過標題行
-        for row in rows[1:]:
-            cols = row.find_all("td")
-            if len(cols) >= 4: # 確保有足夠的欄位
-                metal = cols[0].get_text(strip=True)
-                # Westmetall 的 Settlement 在第二欄(index 1)，3-months 在第三欄(index 2)
-                settlement = cols[1].get_text(strip=True)
-                three_months = cols[2].get_text(strip=True)
-                
-                # 只處理包含 Copper, Tin, Zinc 的資料
-                if any(m in metal for m in ['Copper', 'Tin', 'Zinc']):
-                    data.append({
-                        "金屬": metal,
-                        "Settlement": settlement,
-                        "3 months": three_months,
-                    })
-        
-        if not data:
-            raise ValueError("無法從 Westmetall 解析出任何 LME 數據。")
-            
-        df = pd.DataFrame(data)
-        return df, "已從網路獲取最新數據 (BeautifulSoup)"
-    except Exception as e:
-        return pd.DataFrame(), f"Westmetall 數據獲取失敗: {e}"
+def fetch_westmetall_lme_data():
+    westmetall_url = "https://www.westmetall.com/en/markdaten.php"
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    response = requests.get(westmetall_url, headers=headers)
+    response.raise_for_status()
+    soup = BeautifulSoup(response.text, "html.parser")
+    table = soup.find("table")
+    rows = table.find_all("tr")
+    data = []
+    for row in rows[1:]:
+        cols = row.find_all("td")
+        if len(cols) >= 3:
+            metal = cols[0].get_text(strip=True)
+            settlement_kasse = cols[1].get_text(strip=True)
+            three_months = cols[2].get_text(strip=True)
+            data.append({
+                "金屬": metal,
+                "Settlement Kasse": settlement_kasse,
+                "3 months": three_months,
+                "抓取時間": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                "資料來源": "Westmetall"
+            })
+    df = pd.DataFrame(data)
+    return df, "已從網路獲取最新數據 (BeautifulSoup)"
 
 @st.cache_data(ttl=3600)
 def fetch_bot_daily_fx():
@@ -81,10 +67,10 @@ def fetch_bot_daily_fx():
 # --- 主程式 ---
 def main():
     st.title("📅 每日收盤價參考")
-    st.subheader("版本: V7 - 最終穩定版") # 版本號，用來確認部署狀態
+    st.subheader("版本: V7 - 最終穩定版")
     
     # --- 加載數據 ---
-    df_westmetall, msg_westmetall = fetch_westmetall_daily()
+    df_westmetall, msg_westmetall = fetch_westmetall_lme_data()
     df_fx_daily_all, msg_fx = fetch_bot_daily_fx()
     st.caption(f"Westmetall: {msg_westmetall} | 台銀匯率: {msg_fx}")
     st.markdown("---")
@@ -128,9 +114,9 @@ def main():
                  df_calc[col] = pd.to_numeric(df_calc[col].astype(str).str.replace(',', ''), errors='coerce')
             
             # 3. 根據公式計算價格
-            copper_settlement = df_calc.loc['Copper', 'Settlement']
-            tin_settlement = df_calc.loc['Tin', 'Settlement']
-            zinc_settlement = df_calc.loc['Zinc', 'Settlement']
+            copper_settlement = df_calc.loc['Copper', 'Settlement Kasse']
+            tin_settlement = df_calc.loc['Tin', 'Settlement Kasse']
+            zinc_settlement = df_calc.loc['Zinc', 'Settlement Kasse']
             tin_3m = df_calc.loc['Tin', '3 months']
             zinc_3m = df_calc.loc['Zinc', '3 months']
 
