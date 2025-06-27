@@ -90,8 +90,8 @@ def fetch_bot_daily_fx():
 
 # --- 主程式 ---
 def main():
-    st.title("📅 每日收盤價參考")
-    st.subheader("版本: V7 - 最終穩定版")
+    st.title("📅 前日收盤價參考")
+    st.subheader("版本: V8 - 最終穩定版")
     
     # --- 加載數據 ---
     df_westmetall, msg_westmetall = fetch_westmetall_lme_data()
@@ -109,8 +109,8 @@ def main():
         df_fx_filtered = df_fx_daily_all[df_fx_daily_all['幣別'].str.contains("美金|人民幣|USD|CNY")]
         if not df_fx_filtered.empty:
             st.dataframe(
-                df_fx_filtered[['幣別', '即期買入', '即期賣出', '日期', '抓取時間']].rename(
-                    columns={'幣別': '幣別', '即期買入': '即期買入', '即期賣出': '即期賣出', '日期': '掛牌日期', '抓取時間': '掛牌時間'}
+                df_fx_filtered[['幣別', '即期買入', '即期賣出', '掛牌日期', '掛牌時間']].rename(
+                    columns={'幣別': '幣別', '即期買入': '即期買入', '即期賣出': '即期賣出', '掛牌日期': '掛牌日期', '掛牌時間': '掛牌時間'}
                 ),
                 use_container_width=True,
                 hide_index=True
