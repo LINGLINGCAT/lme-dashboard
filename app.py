@@ -6,6 +6,15 @@ st.set_page_config(
     layout="wide"
 )
 
+# --- CSS to hide the main page from the sidebar ---
+st.markdown("""
+<style>
+    [data-testid="stSidebarNav"] > ul > li:first-child {
+        display: none;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 st.title("歡迎使用 LME 報價看板")
 st.sidebar.success("請從上方選擇一個頁面")
 
@@ -15,6 +24,6 @@ st.markdown(
     
     **👈 請從左側的側邊欄選擇您想要查看的頁面：**
     - **LME 即時報價看板**: 查看 LME 市場與台銀的即時匯率。
-    - **每日收盤參考**: 查看 Westmetall 的 LME 收盤價與台銀的每日匯率。
+    - **前日前日收盤參考**: 查看 Westmetall 的 LME 收盤價與台銀的每日匯率。
     """
 )

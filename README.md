@@ -126,3 +126,30 @@ graph TD
 ## 授權
 
 MIT License
+
+## 本地與雲端部署說明
+
+### 本地開發流程
+1. 啟動終端機（Anaconda Prompt 或 Git Bash）
+2. 切換到專案資料夾
+   ```bash
+   cd /d/ANACONDA/lme-dashboard
+   ```
+3. 啟動 Streamlit
+   ```bash
+   streamlit run pages/2_前日收盤.py
+   ```
+4. 程式會自動即時爬取 Westmetall（LME 價格）與台銀（匯率）資料，並快取於 `data/` 目錄下的 CSV 檔案。
+5. 歷史資料會自動儲存於 `data/csp_history.csv`。
+
+### 雲端部署（Streamlit Cloud）
+- 推送程式碼到 GitHub 後，Streamlit Cloud 會自動重新部署 dashboard。
+- 雲端程式僅能存取 repo 內的 `data/` 目錄，**無法存取本地 Z 槽或 D 槽的檔案**。
+- dashboard 會自動即時爬取網路資料，或讀取快取於 `data/` 目錄的 CSV。
+- 若需讓雲端 dashboard 顯示特定資料，請將必要的 CSV 一併 push 到 GitHub。
+
+### 典型使用流程
+1. 本地開發、測試
+2. push 程式碼（與必要資料）到 GitHub
+3. Streamlit Cloud 自動部署
+4. dashboard 自動爬取網路資料，或讀取 repo 內的 `data/` CSV

@@ -126,7 +126,7 @@ def main():
             spot_buy = pd.to_numeric(usd_row['即期買入'].iloc[0], errors='coerce')
             spot_sell = pd.to_numeric(usd_row['即期賣出'].iloc[0], errors='coerce')
             usd_mid_rate = (spot_buy + spot_sell) / 2
-            st.metric(label="當前美金中間匯率", value=f"{usd_mid_rate:.4f}")
+            st.metric(label="歷史美金中間匯率", value=f"{usd_mid_rate:.4f}")
 
             # 2. 準備 LME 價格資料
             df_calc = df_westmetall.copy()
