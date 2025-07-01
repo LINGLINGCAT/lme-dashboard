@@ -5,6 +5,10 @@ from datetime import datetime
 import io
 import re
 from streamlit_autorefresh import st_autorefresh
+from utils.auth import check_password, logout
+
+# 檢查密碼認證
+check_password()
 
 # --- 頁面設定 ---
 st.set_page_config(page_title="LME 即時報價看板", page_icon="📈", layout="wide")
@@ -106,6 +110,11 @@ def calculate_prices(df_lme, df_fx):
         return pd.DataFrame(), f"價格計算失敗: {e}"
 
 def main():
+    # 側邊欄登出按鈕
+    with st.sidebar:
+        if st.button("🚪 登出", type="secondary"):
+            logout()
+    
     st_autorefresh(interval=5000, key="lme_autorefresh")
     st.title("📈 LME 即時報價看板")
     st.subheader("版本: V1.5 - 即時價格試算")

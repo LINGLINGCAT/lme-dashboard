@@ -7,6 +7,10 @@ import io
 from pathlib import Path
 import time
 import re
+from utils.auth import check_password, logout
+
+# 檢查密碼認證
+check_password()
 
 # --- 設定 ---
 DATA_DIR = Path("data")
@@ -89,6 +93,11 @@ def fetch_bot_daily_fx():
 
 # --- 主程式 ---
 def main():
+    # 側邊欄登出按鈕
+    with st.sidebar:
+        if st.button("🚪 登出", type="secondary"):
+            logout()
+    
     st.title("📅 前日收盤價")
     st.subheader("版本: V9")
     
