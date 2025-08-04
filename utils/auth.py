@@ -79,6 +79,8 @@ def check_password() -> bool:
     # 檢查是否已經登入
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
+    if "is_admin" not in st.session_state:
+        st.session_state.is_admin = False
     
     if st.session_state.authenticated:
         return True
@@ -106,6 +108,11 @@ def check_password() -> bool:
             if st.button("登入", type="primary", use_container_width=True):
                 if auth.verify_password(password):
                     st.session_state.authenticated = True
+                    # 檢查是否為管理員密碼
+                    admin_password = os.getenv('ADMIN_PASSWORD_HASH', 
+                                            '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918')  # "admin"的SHA256
+                    if auth.hash_password(password) == admin_password:
+                        st.session_state.is_admin = True
                     auth.reset_attempts()
                     st.success("登入成功！")
                     st.rerun()
@@ -129,9 +136,15 @@ def logout():
     """登出函數"""
     if "authenticated" in st.session_state:
         del st.session_state.authenticated
+    if "is_admin" in st.session_state:
+        del st.session_state.is_admin
     if "password_input" in st.session_state:
         del st.session_state.password_input
     st.rerun()
+
+def is_admin() -> bool:
+    """檢查當前用戶是否為管理員"""
+    return st.session_state.get("is_admin", False)
 
 def create_password_hash(password: str) -> str:
     """創建密碼哈希（用於設置環境變數）"""

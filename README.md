@@ -232,6 +232,11 @@ streamlit run pages/6_使用說明.py
 - **線上計算機**: 支援成分計算、LME係數計算、現價計算等功能
 - **LME即時報價看板**: 即時顯示LME金屬價格
 - **前日收盤**: 歷史數據查詢
+- **管理員功能**: 數據分析、系統設定、使用說明 (僅管理員可見)
+
+### 🔐 權限系統
+- **普通用戶密碼**: `password` - 可訪問基本功能
+- **管理員密碼**: `admin` - 可訪問所有功能，包括管理員專用頁面
 
 ### 常見問題
 - 如果遇到 `ModuleNotFoundError: No module named 'streamlit_autorefresh'`，請執行：
