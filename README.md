@@ -7,8 +7,20 @@
 
 1. **打開 Git Bash 或終端機**
 2. **切換到專案資料夾**
+   
+   **Git Bash:**
    ```bash
    cd /d/ANACONDA/lme-dashboard
+   ```
+   
+   **PowerShell:**
+   ```powershell
+   cd D:\ANACONDA\lme-dashboard
+   ```
+   
+   **Anaconda Prompt:**
+   ```cmd
+   cd /d D:\ANACONDA\lme-dashboard
    ```
 3. **檢查目前狀態**
    ```bash
@@ -81,18 +93,27 @@ graph TD
 
 ## 項目進度
 
-### 已完成
+### 已完成 ✅
 - [x] 系統架構設計
 - [x] README 文件建立
+- [x] Streamlit 應用開發
+- [x] 認證系統實現
+- [x] 即時數據抓取
+- [x] 計算工具開發
+- [x] 數據分析功能
+- [x] 系統設定功能
+- [x] 使用說明文檔
+- [x] 測試腳本開發
 
-### 進行中
-- [ ] 待確認下一步實施項目
+### 進行中 🔄
+- [ ] 用戶反饋收集
+- [ ] 性能優化
 
-### 待完成
-- [ ] GitHub Actions 配置
-- [ ] Python 腳本開發
-- [ ] Streamlit 應用開發
-- [ ] 測試和優化
+### 待完成 📋
+- [ ] GitHub Actions 自動化部署
+- [ ] 更多數據來源整合
+- [ ] 移動端優化
+- [ ] 高級分析功能
 
 ## 技術棧
 
@@ -124,6 +145,104 @@ graph TD
 3. 提交更改
 4. 發起 Pull Request
 
+## 🚀 快速開始
+
+### 1. 環境準備
+```bash
+# 克隆專案
+git clone <your-repo-url>
+cd lme-dashboard
+
+# 安裝依賴套件
+pip install -r requirements.txt
+```
+
+### 2. 系統測試
+```bash
+# 運行完整功能測試
+python test_all_functions.py
+```
+
+### 3. 啟動應用程式
+```bash
+# 啟動主應用程式
+streamlit run app.py
+
+# 或直接測試特定功能
+streamlit run pages/1_LME_即時報價看板.py
+streamlit run pages/2_前日收盤.py
+streamlit run pages/3_線上計算機.py
+streamlit run pages/4_數據分析.py
+streamlit run pages/5_系統設定.py
+streamlit run pages/6_使用說明.py
+```
+
+### 4. 首次使用
+- **預設密碼**: `password`
+- **建議**: 首次登入後立即更改密碼
+- **功能**: 所有頁面都支援即時數據更新
+
+## 🧪 測試新版本功能
+
+### 測試步驟
+1. **切換到專案目錄**
+   ```powershell
+   cd D:\ANACONDA\lme-dashboard
+   ```
+
+2. **安裝必要套件**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **運行系統測試**
+   ```bash
+   # 快速測試 (推薦日常使用)
+   python quick_test.py
+   
+   # 全面測試 (完整檢查)
+   python test_all_functions.py
+   ```
+
+4. **測試各功能頁面**
+   ```bash
+   # 測試主應用程式
+   streamlit run app.py
+   
+   # 測試LME即時報價看板
+   streamlit run pages/1_LME_即時報價看板.py
+   
+   # 測試前日收盤
+   streamlit run pages/2_前日收盤.py
+   
+   # 測試線上計算機（新功能）
+   streamlit run pages/3_線上計算機.py
+   
+   # 測試數據分析（新功能）
+   streamlit run pages/4_數據分析.py
+   
+   # 測試系統設定（新功能）
+   streamlit run pages/5_系統設定.py
+   
+   # 查看使用說明
+   streamlit run pages/6_使用說明.py
+   ```
+
+### 新功能說明
+- **線上計算機**: 支援成分計算、LME係數計算、現價計算等功能
+- **LME即時報價看板**: 即時顯示LME金屬價格
+- **前日收盤**: 歷史數據查詢
+
+### 常見問題
+- 如果遇到 `ModuleNotFoundError: No module named 'streamlit_autorefresh'`，請執行：
+  ```bash
+  pip install streamlit-autorefresh
+  ```
+- 如果PowerShell無法識別 `streamlit` 命令，請使用：
+  ```bash
+  python -m streamlit run app.py
+  ```
+
 ## 授權
 
 MIT License
@@ -131,14 +250,35 @@ MIT License
 ## 本地與雲端部署說明
 
 ### 本地開發流程
-1. 啟動終端機（Anaconda Prompt 或 Git Bash）
+1. 啟動終端機（Anaconda Prompt、Git Bash 或 PowerShell）
 2. 切換到專案資料夾
+   
+   **Git Bash:**
    ```bash
    cd /d/ANACONDA/lme-dashboard
+   ```
+   
+   **PowerShell:**
+   ```powershell
+   cd D:\ANACONDA\lme-dashboard
+   ```
+   
+   **Anaconda Prompt:**
+   ```cmd
+   cd /d D:\ANACONDA\lme-dashboard
    ```
 3. 啟動 Streamlit
    ```bash
    streamlit run pages/2_前日收盤.py
+   ```
+   
+   **測試新版本功能：**
+   ```bash
+   # 測試線上計算機
+   streamlit run pages/3_線上計算機.py
+   
+   # 測試LME即時報價看板
+   streamlit run pages/1_LME_即時報價看板.py
    ```
 4. 程式會自動即時爬取 Westmetall（LME 價格）與台銀（匯率）資料，並快取於 `data/` 目錄下的 CSV 檔案。
 5. 歷史資料會自動儲存於 `data/csp_history.csv`。

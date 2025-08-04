@@ -5,3 +5,5 @@ beautifulsoup4
 lxml
 streamlit-autorefresh
 python-dotenv
+plotly
+psutil
