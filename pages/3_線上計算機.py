@@ -845,14 +845,27 @@ def main():
                             st.error(f"公式解析失敗: {parse_error}")
                     
                     elif 'lme_calc_type' in locals() and lme_calc_type == "銅價百分比":  # 銅價百分比
-                        # 生成銅價百分比公式
-                        lme_formula = f"lme銅價*{copper_percentage}%"
-                        
-                        # 解析公式並計算價格
-                        result, parse_error = parse_lme_formula(lme_formula, metal_prices)
-                        if not parse_error:
+                        # 銅價百分比計算邏輯
+                        copper_price = metal_prices.get('銅')
+                        if copper_price is None:
+                            st.error("無法取得銅價")
+                        else:
+                            # 使用用戶輸入的銅價百分比
+                            user_percentage = copper_percentage  # 用戶輸入的百分比
+                            calculated_price = copper_price * user_percentage / 100 / 1000  # 轉換為每公斤
+                            
                             # 計算台幣價格
-                            twd_price = result['usd_price'] * usd_mid_rate
+                            twd_price = calculated_price * usd_mid_rate
+                            
+                            # 計算標準價格 (使用當前成分的標準價格)
+                            composition_result, _ = calculate_composition_price(composition, metal_prices, usd_mid_rate)
+                            if composition_result:
+                                standard_price = composition_result['美元價格/噸']
+                                # 計算對標準價格的百分比
+                                price_percentage = (calculated_price / standard_price) * 100
+                            else:
+                                standard_price = 0
+                                price_percentage = 0
                             
                             st.markdown("---")
                             st.subheader("📊 LME係數計算結果")
@@ -863,7 +876,7 @@ def main():
                             with col1:
                                 st.metric(
                                     "美元價格/噸",
-                                    f"${result['usd_price']:,.2f}"
+                                    f"${calculated_price:,.2f}"
                                 )
                             
                             with col2:
@@ -875,65 +888,40 @@ def main():
                             with col3:
                                 st.metric(
                                     "銅價百分比",
-                                    f"{result['percentage']:.2f}%"
+                                    f"{user_percentage:.2f}%"
                                 )
                             
                             # 詳細結果
                             st.markdown("**詳細計算結果**")
                             detail_df = pd.DataFrame([{
-                                "項目": "生成公式",
-                                "數值": lme_formula
+                                "項目": "計算公式",
+                                "數值": f"LME銅價 × {user_percentage}%"
                             }, {
                                 "項目": "美元價格/噸",
-                                "數值": f"${result['usd_price']:,.2f}"
+                                "數值": f"${calculated_price:,.2f}"
                             }, {
                                 "項目": "台幣價格/噸",
                                 "數值": f"NT${twd_price:,.2f}"
                             }, {
-                                "項目": "銅價百分比",
-                                "數值": f"{result['percentage']:.2f}%"
+                                "項目": "標準價格百分比",
+                                "數值": f"{price_percentage:.2f}%"
                             }, {
                                 "項目": "當前銅價",
-                                "數值": f"${result['copper_price']:,.2f}"
+                                "數值": f"${copper_price:,.2f}"
+                            }, {
+                                "項目": "標準價格",
+                                "數值": f"${standard_price:,.2f}"
                             }])
                             
                             st.dataframe(detail_df, use_container_width=True, hide_index=True)
                             
-                            # 回推計算
-                            st.markdown("**回推計算**")
-                            reverse_result, reverse_error = calculate_reverse_percentage(
-                                result['usd_price'], 
-                                result['usd_price'], 
-                                result['formula_type'], 
-                                metal_prices,
-                                lme_formula
-                            )
-                            
-                            if not reverse_error:
-                                st.markdown("**對應銅價百分比**")
-                                st.metric(
-                                    "銅價百分比",
-                                    f"{reverse_result['copper_percentage']:.2f}%"
-                                )
-                                
-                                # 顯示對應的複合成分百分比
-                                if 'composition_results' in reverse_result:
-                                    st.markdown("**對應各種成分的百分比**")
-                                    composition_data = []
-                                    for comp_name, comp_data in reverse_result['composition_results'].items():
-                                        composition_data.append({
-                                            "成分": comp_name,
-                                            "公式": comp_data["formula"],
-                                            "對應百分比": f"{comp_data['percentage']:.2f}%"
-                                        })
-                                    
-                                    if composition_data:
-                                        comp_df = pd.DataFrame(composition_data)
-                                        st.dataframe(comp_df, use_container_width=True, hide_index=True)
-                            else:
-                                st.warning(f"回推計算失敗: {reverse_error}")
-                        else:
-                            st.error(f"公式解析失敗: {parse_error}")
+                            # 顯示計算說明
+                            st.markdown("**計算說明**")
+                            st.info(f"""
+                            - **計算公式**: LME銅價 × {user_percentage}% = ${calculated_price:,.2f}/kg
+                            - **標準價格**: 當前成分的標準價格 = ${standard_price:,.2f}/kg  
+                            - **百分比**: 計算結果對標準價格的百分比 = {price_percentage:.2f}%
+                            """)
     
     # 批量計算功能
     if composition and total_percentage == 100 and not df_lme.empty:
