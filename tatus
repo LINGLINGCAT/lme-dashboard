@@ -1,0 +1,5 @@
+[33mb1193bb[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m fix: 修正銅價百分比計算邏輯
+[33md21d837[m feat: 新增管理員權限系統
+[33m3b3c3a3[m feat: 新增快速測試工具和完整功能測試
+[33m0298145[m 新增線上計算機功能：自定義成分計算與價格轉換
+[33mddb4142[m Update README
