@@ -756,16 +756,82 @@ def main():
                     if calc_mode == "LME係數計算":
                         # 確保 lme_calc_type 有定義
                         if 'lme_calc_type' in locals() and lme_calc_type == "複合成分係數":
-                            # 生成複合成分公式
-                            composition_parts = []
-                            for metal, percent in composition.items():
-                                metal_code = {"銅": "cu", "鋅": "zn", "錫": "sn"}.get(metal, metal)
-                                composition_parts.append(f"{metal_code}*{percent}%")
-                            
-                            lme_formula = f"({' + '.join(composition_parts)})*{final_percentage}%"
-                        
-                        # 解析公式並計算價格
-                        result, parse_error = parse_lme_formula(lme_formula, metal_prices)
+                            # 修正複合成分係數計算邏輯
+                            # 1. 計算標準成分價格
+                            composition_result, _ = calculate_composition_price(composition, metal_prices, usd_mid_rate)
+                            if composition_result:
+                                standard_price = composition_result['美元價格/噸']
+                                
+                                # 2. 應用最終百分比
+                                calculated_price = standard_price * final_percentage / 100
+                                twd_price = calculated_price * usd_mid_rate
+                                
+                                # 3. 計算對銅價的百分比
+                                copper_price = metal_prices.get('銅')
+                                if copper_price:
+                                    copper_price_per_kg = copper_price / 1000  # 轉換為每公斤
+                                    copper_percentage = (calculated_price / copper_price_per_kg) * 100
+                                else:
+                                    copper_percentage = 0
+                                
+                                st.markdown("---")
+                                st.subheader("📊 LME係數計算結果")
+                                
+                                # 顯示計算結果
+                                col1, col2, col3 = st.columns(3)
+                                
+                                with col1:
+                                    st.metric(
+                                        "美元價格/噸",
+                                        f"${calculated_price:,.2f}"
+                                    )
+                                
+                                with col2:
+                                    st.metric(
+                                        "台幣價格/噸",
+                                        f"NT${twd_price:,.2f}"
+                                    )
+                                
+                                with col3:
+                                    st.metric(
+                                        "銅價百分比",
+                                        f"{copper_percentage:.2f}%"
+                                    )
+                                
+                                # 詳細結果
+                                st.markdown("**詳細計算結果**")
+                                detail_df = pd.DataFrame([{
+                                    "項目": "計算公式",
+                                    "數值": f"{composition}*{final_percentage}%"
+                                }, {
+                                    "項目": "標準價格",
+                                    "數值": f"${standard_price:,.2f}"
+                                }, {
+                                    "項目": "美元價格/噸",
+                                    "數值": f"${calculated_price:,.2f}"
+                                }, {
+                                    "項目": "台幣價格/噸",
+                                    "數值": f"NT${twd_price:,.2f}"
+                                }, {
+                                    "項目": "銅價百分比",
+                                    "數值": f"{copper_percentage:.2f}%"
+                                }, {
+                                    "項目": "當前銅價",
+                                    "數值": f"${copper_price:,.2f}"
+                                }])
+                                
+                                st.dataframe(detail_df, use_container_width=True, hide_index=True)
+                                
+                                # 顯示計算說明
+                                st.markdown("**計算說明**")
+                                st.info(f"""
+                                - **計算公式**: {composition} × {final_percentage}% = ${calculated_price:,.2f}/kg
+                                - **標準價格**: {composition} 的標準價格 = ${standard_price:,.2f}/kg
+                                - **銅價百分比**: 計算結果對銅價的百分比 = {copper_percentage:.2f}%
+                                """)
+                            else:
+                                st.error("無法計算標準成分價格")
+                                return
                         if not parse_error:
                             # 計算台幣價格
                             twd_price = result['usd_price'] * usd_mid_rate
@@ -863,9 +929,13 @@ def main():
                                 standard_price = composition_result['美元價格/噸']
                                 # 計算對標準價格的百分比
                                 price_percentage = (calculated_price / standard_price) * 100
+                                
+                                # 回推計算：計算對應的複合成分百分比
+                                reverse_percentage = (calculated_price / standard_price) * 100
                             else:
                                 standard_price = 0
                                 price_percentage = 0
+                                reverse_percentage = 0
                             
                             st.markdown("---")
                             st.subheader("📊 LME係數計算結果")
@@ -920,7 +990,8 @@ def main():
                             st.info(f"""
                             - **計算公式**: LME銅價 × {user_percentage}% = ${calculated_price:,.2f}/kg
                             - **標準價格**: 當前成分的標準價格 = ${standard_price:,.2f}/kg  
-                            - **百分比**: 計算結果對標準價格的百分比 = {price_percentage:.2f}%
+                            - **標準價格百分比**: 計算結果對標準價格的百分比 = {price_percentage:.2f}%
+                            - **回推複合成分**: {composition} × {reverse_percentage:.2f}%
                             """)
     
     # 批量計算功能
