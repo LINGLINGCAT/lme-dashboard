@@ -1,5 +1,6 @@
 import streamlit as st
 from utils.auth import check_password, logout, is_admin
+from version import get_version_display
 
 # 檢查密碼認證
 check_password()
@@ -39,6 +40,9 @@ with st.sidebar:
 
 st.title("歡迎使用 LME 報價看板")
 st.sidebar.success("請從上方選擇一個頁面")
+
+# 顯示版本號
+st.sidebar.markdown(f"**版本**: {get_version_display()}")
 
 st.markdown(
     """
