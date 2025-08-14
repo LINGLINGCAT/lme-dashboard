@@ -1,103 +1,129 @@
-# 🔐 LME Dashboard 安全系統
+# 🔐 LME Dashboard 安全設定說明
 
-## 安全改進
+## 密碼管理
 
-相比原來的簡單密碼保護，新的安全系統提供了以下改進：
+### 密碼哈希生成
+系統使用 SHA256 哈希算法儲存密碼，確保密碼安全性。
 
-### 原來的問題
-1. **密碼明文存儲** - 密碼直接寫在代碼中
-2. **客戶端驗證** - 容易被繞過
-3. **無防暴力破解** - 可以無限次嘗試密碼
-4. **會話狀態不安全** - 容易被篡改
-
-### 新的安全特性
-1. **密碼哈希存儲** - 使用 SHA256 哈希存儲密碼
-2. **環境變數配置** - 密碼不寫在代碼中
-3. **防暴力破解** - 限制登入嘗試次數
-4. **帳戶鎖定** - 超過嘗試次數後鎖定帳戶
-5. **安全的會話管理** - 更安全的認證狀態管理
-
-## 設置步驟
-
-### 1. 安裝依賴
+#### 使用 generate_password_hash.py
 ```bash
-pip install python-dotenv
+python generate_password_hash.py
 ```
 
-### 2. 設置密碼
-運行密碼設置工具：
-```bash
-python setup_password.py
-```
-
-或者手動生成密碼哈希：
+#### 手動生成哈希
 ```python
-python -c "from utils.auth import create_password_hash; print(create_password_hash('你的密碼'))"
+import hashlib
+
+def create_password_hash(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+# 範例
+password = "your_password"
+hash_value = create_password_hash(password)
+print(f"密碼: {password}")
+print(f"哈希: {hash_value}")
 ```
 
-### 3. 配置環境變數
+### 環境變數設定
+在 `.env` 檔案中設定密碼哈希：
 
-#### 方法一：使用 .env 文件
-創建 `.env` 文件：
 ```env
-DASHBOARD_PASSWORD_HASH=你的密碼哈希
+# 密碼哈希設定
+DASHBOARD_PASSWORD_HASH=5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8
+ADMIN_PASSWORD_HASH=8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918
+
+# 登入安全設定
 MAX_LOGIN_ATTEMPTS=5
 LOCKOUT_DURATION_MINUTES=15
 ```
 
-#### 方法二：設置系統環境變數
-```bash
-# Windows
-set DASHBOARD_PASSWORD_HASH=你的密碼哈希
-set MAX_LOGIN_ATTEMPTS=5
-set LOCKOUT_DURATION_MINUTES=15
+### 預設密碼
+- **一般用戶**: `password`
+- **管理員**: `admin`
 
-# Linux/Mac
-export DASHBOARD_PASSWORD_HASH=你的密碼哈希
-export MAX_LOGIN_ATTEMPTS=5
-export LOCKOUT_DURATION_MINUTES=15
-```
+## 權限控制
 
-### 4. 運行應用
-```bash
-streamlit run app.py
-```
+### 用戶權限
+- **一般用戶**: 可訪問基本功能（即時報價、前日收盤、線上計算機）
+- **管理員**: 可訪問所有功能（包括數據分析、系統設定、使用說明）
 
-## 安全配置選項
+### 安全機制
+1. **密碼驗證**: 使用 SHA256 哈希驗證
+2. **登入嘗試限制**: 防止暴力破解
+3. **會話管理**: 自動登出和會話清理
+4. **權限檢查**: 服務器端權限驗證
 
-| 環境變數 | 說明 | 預設值 |
-|---------|------|--------|
-| `DASHBOARD_PASSWORD_HASH` | 密碼的 SHA256 哈希 | "password" 的哈希 |
-| `MAX_LOGIN_ATTEMPTS` | 最大登入嘗試次數 | 5 |
-| `LOCKOUT_DURATION_MINUTES` | 鎖定時間（分鐘） | 15 |
+## 安全最佳實踐
 
-## 安全建議
+### 密碼安全
+- 使用強密碼（至少8個字符）
+- 包含大小寫字母、數字和符號
+- 定期更改密碼
+- 不要在公共場所輸入密碼
 
-1. **使用強密碼** - 包含大小寫字母、數字和特殊字符
-2. **定期更換密碼** - 建議每 3-6 個月更換一次
-3. **保護 .env 文件** - 確保 .env 文件不被提交到版本控制
-4. **使用 HTTPS** - 在生產環境中使用 HTTPS
-5. **監控登入嘗試** - 定期檢查是否有異常登入嘗試
+### 系統安全
+- 定期更新系統
+- 監控登入活動
+- 備份重要數據
+- 使用 HTTPS 連接
+
+### 環境安全
+- 保護 `.env` 檔案
+- 不要將密碼哈希提交到版本控制
+- 定期檢查系統日誌
+- 限制管理員權限
 
 ## 故障排除
 
-### 密碼不正確
-- 確認密碼哈希是否正確生成
-- 檢查環境變數是否正確設置
-- 確認沒有多餘的空格或換行符
+### 常見問題
+1. **密碼驗證失敗**
+   - 檢查 `.env` 檔案是否存在
+   - 確認密碼哈希是否正確
+   - 檢查環境變數是否載入
 
-### 帳戶被鎖定
-- 等待鎖定時間結束（預設 15 分鐘）
-- 或者重啟應用程序重置鎖定狀態
+2. **權限問題**
+   - 確認用戶是否為管理員
+   - 檢查會話狀態
+   - 重新登入
 
-### 環境變數不生效
-- 確認 .env 文件在正確位置
-- 檢查環境變數名稱是否正確
-- 重啟應用程序
+3. **環境變數問題**
+   - 確認 `.env` 檔案格式正確
+   - 檢查檔案編碼（UTF-8）
+   - 重新啟動應用程式
 
-## 開發者注意事項
+### 緊急處理
+如果遇到安全問題：
+1. 立即更改所有密碼
+2. 檢查系統日誌
+3. 暫停可疑帳戶
+4. 聯繫系統管理員
 
-- 預設密碼是 "password"，僅用於開發測試
-- 生產環境必須設置自己的密碼
-- 不要將包含真實密碼的 .env 文件提交到版本控制
-- 定期更新依賴包以修復安全漏洞 
+## 技術細節
+
+### 認證流程
+1. 用戶輸入密碼
+2. 系統生成 SHA256 哈希
+3. 與儲存的哈希比對
+4. 驗證成功後建立會話
+
+### 權限檢查
+```python
+def is_admin():
+    """檢查是否為管理員"""
+    if 'admin_logged_in' in st.session_state:
+        return st.session_state.admin_logged_in
+    return False
+```
+
+### 會話管理
+```python
+def logout():
+    """登出用戶"""
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    st.rerun()
+```
+
+---
+
+**注意**: 此文件包含敏感資訊，請妥善保管，不要分享給未授權人員。

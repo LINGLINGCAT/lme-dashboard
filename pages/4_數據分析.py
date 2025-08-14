@@ -5,10 +5,15 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import requests
 from pathlib import Path
-from utils.auth import check_password, logout
+from utils.auth import check_password, logout, is_admin
 
 # 檢查密碼認證
 check_password()
+
+# 檢查是否為管理員
+if not is_admin():
+    st.error("🔒 此頁面僅限管理員訪問")
+    st.stop()
 
 # --- 頁面設定 ---
 st.set_page_config(page_title="數據分析", page_icon="📊", layout="wide")

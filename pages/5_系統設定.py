@@ -2,7 +2,7 @@ import streamlit as st
 import hashlib
 import os
 from pathlib import Path
-from utils.auth import check_password, logout, create_password_hash
+from utils.auth import check_password, logout, is_admin
 import json
 import datetime
 import pandas as pd
@@ -10,6 +10,11 @@ import psutil
 
 # 檢查密碼認證
 check_password()
+
+# 檢查是否為管理員
+if not is_admin():
+    st.error("🔒 此頁面僅限管理員訪問")
+    st.stop()
 
 # --- 頁面設定 ---
 st.set_page_config(page_title="系統設定", page_icon="⚙️", layout="wide")
@@ -56,21 +61,7 @@ def save_settings(settings):
         st.error(f"儲存設定失敗: {e}")
         return False
 
-def change_password(new_password):
-    """更改密碼"""
-    try:
-        # 創建新的密碼哈希
-        password_hash = create_password_hash(new_password)
-        
-        # 更新環境變數（這裡只是顯示，實際需要手動更新 .env 檔案）
-        st.success("✅ 密碼已成功更改！")
-        st.info(f"新的密碼哈希: {password_hash}")
-        st.warning("⚠️ 請將此哈希值更新到您的 .env 檔案中的 DASHBOARD_PASSWORD_HASH 變數")
-        
-        return True
-    except Exception as e:
-        st.error(f"更改密碼失敗: {e}")
-        return False
+
 
 def main():
     # 側邊欄登出按鈕
@@ -86,7 +77,7 @@ def main():
     settings = load_settings()
     
     # 設定分頁
-    tab1, tab2, tab3, tab4 = st.tabs(["🔧 一般設定", "🔐 安全設定", "📊 數據設定", "ℹ️ 系統資訊"])
+    tab1, tab2, tab3 = st.tabs(["🔧 一般設定", "📊 數據設定", "ℹ️ 系統資訊"])
     
     with tab1:
         st.subheader("🔧 一般設定")
@@ -149,71 +140,9 @@ def main():
                 st.success("✅ 一般設定已儲存！")
                 st.rerun()
     
-    with tab2:
-        st.subheader("🔐 安全設定")
-        
-        # 密碼管理
-        st.markdown("**密碼管理**")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            new_password = st.text_input(
-                "新密碼",
-                type="password",
-                help="輸入新的登入密碼"
-            )
-            
-            confirm_password = st.text_input(
-                "確認密碼",
-                type="password",
-                help="再次輸入新密碼以確認"
-            )
-        
-        with col2:
-            if new_password and confirm_password:
-                if new_password == confirm_password:
-                    if len(new_password) >= 6:
-                        if st.button("🔐 更改密碼", type="primary"):
-                            change_password(new_password)
-                    else:
-                        st.error("❌ 密碼長度至少需要6個字符")
-                else:
-                    st.error("❌ 兩次輸入的密碼不一致")
-        
-        # 登入嘗試設定
-        st.markdown("**登入安全設定**")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            max_attempts = st.number_input(
-                "最大登入嘗試次數",
-                min_value=3,
-                max_value=10,
-                value=5,
-                help="超過此次數將鎖定帳戶"
-            )
-        
-        with col2:
-            lockout_duration = st.number_input(
-                "鎖定時間 (分鐘)",
-                min_value=5,
-                max_value=60,
-                value=15,
-                help="帳戶被鎖定的時間"
-            )
-        
-        # 安全提示
-        st.info("""
-        **安全提示：**
-        - 使用強密碼（包含大小寫字母、數字和符號）
-        - 定期更改密碼
-        - 不要在公共場所登入
-        - 登出時記得清除瀏覽器快取
-        """)
+
     
-    with tab3:
+    with tab2:
         st.subheader("📊 數據設定")
         
         # 數據來源設定
@@ -279,7 +208,7 @@ def main():
             help="在匯出的檔案名中包含時間戳記"
         )
     
-    with tab4:
+    with tab3:
         st.subheader("ℹ️ 系統資訊")
         
         # 系統狀態
