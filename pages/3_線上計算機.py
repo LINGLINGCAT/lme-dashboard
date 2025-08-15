@@ -36,7 +36,6 @@ DEFAULT_COMPOSITIONS = {
     "C2680": {"銅": 65, "鋅": 35},
     "C2600": {"銅": 70, "鋅": 30},
     "磷青銅": {"銅": 94, "錫": 6},
-    "青銅": {"銅": 65, "鋅": 35},
     "紅銅": {"銅": 100, "鋅": 0},
     "自定義": {}
 }
@@ -495,7 +494,7 @@ def main():
         # 計算模式選擇
         calc_mode = st.radio(
             "計算模式",
-            ["現價計算", "LME係數計算"],
+            ["現價計算", "係數計算"],
             horizontal=True,
             key="calc_mode_radio"
         )
@@ -523,9 +522,9 @@ def main():
             )
             
             if lme_calc_type == "複合成分係數":
-                # 最終百分比輸入
+                # 成分係數百分比輸入
                 final_percentage = st.number_input(
-                    "最終百分比 (%)",
+                    "成分係數百分比 (%)",
                     min_value=0.0,
                     max_value=200.0,
                     value=98.0,
@@ -580,7 +579,7 @@ def main():
                         usd_mid_rate = (usd_buy + usd_sell) / 2
                 
                 # 只在有輸入價格或LME係數計算時顯示結果
-                if (calc_mode == "現價計算" and input_price is not None) or calc_mode == "LME係數計算":
+                if (calc_mode == "現價計算" and input_price is not None) or calc_mode == "係數計算":
                     # 現價計算
                     result, calc_error = calculate_composition_price(composition, metal_prices, usd_mid_rate, input_price, input_currency)
                     if not calc_error:
@@ -610,7 +609,7 @@ def main():
                                         "成分價格 (USD/噸)",
                                         f"${final_price:,.2f}"
                                     )
-                                elif calc_mode == "LME係數計算" and 'lme_calc_type' in locals() and lme_calc_type == "銅價百分比":
+                                elif calc_mode == "係數計算" and 'lme_calc_type' in locals() and lme_calc_type == "銅價百分比":
                                     # 銅價百分比模式：LME銅價 × 百分比
                                     copper_price = metal_prices.get('銅', 0)
                                     if copper_price > 0:
@@ -651,7 +650,7 @@ def main():
                                         "成分價格 (TWD/公斤)",
                                         f"NT${twd_price:,.2f}"
                                     )
-                                elif calc_mode == "LME係數計算" and 'lme_calc_type' in locals() and lme_calc_type == "銅價百分比":
+                                elif calc_mode == "係數計算" and 'lme_calc_type' in locals() and lme_calc_type == "銅價百分比":
                                     # 銅價百分比模式：LME銅價 × 百分比
                                     copper_price = metal_prices.get('銅', 0)
                                     if copper_price > 0:
@@ -678,8 +677,8 @@ def main():
                                 copper_price = metal_prices.get('銅', 0)
                                 if copper_price > 0:
                                     if input_currency == "TWD":
-                                        usd_price_for_lme = result['美元等值']
-                                        lme_percentage = (usd_price_for_lme / copper_price) * 100 * 1000
+                                        usd_price_for_lme = result['美元等值'] * 1000  # 轉換為每噸
+                                        lme_percentage = (usd_price_for_lme / copper_price) * 100
                                     else:
                                         usd_price_for_lme = input_price
                                         lme_percentage = (usd_price_for_lme / copper_price) * 100
@@ -697,24 +696,37 @@ def main():
                                 copper_price = metal_prices.get('銅', 0)
                                 if copper_price > 0:
                                                                         # 在LME係數計算模式下，應該顯示最終計算價格的LME係數
-                                    if calc_mode == "LME係數計算" and 'lme_calc_type' in locals() and lme_calc_type == "複合成分係數":
+                                    if calc_mode == "係數計算" and 'lme_calc_type' in locals() and lme_calc_type == "複合成分係數":
                                         # 使用最終計算價格
                                         final_price = result['美元價格/噸'] * final_percentage / 100
-                                        lme_coefficient = (final_price) / copper_price
-                                    elif calc_mode == "LME係數計算" and 'lme_calc_type' in locals() and lme_calc_type == "銅價百分比":
+                                        lme_coefficient = (final_price / copper_price) * 100
+                                    elif calc_mode == "係數計算" and 'lme_calc_type' in locals() and lme_calc_type == "銅價百分比":
                                         # 銅價百分比模式
                                         user_percentage = copper_percentage
                                         calculated_price = copper_price * user_percentage / 100
-                                        lme_coefficient = (calculated_price) / copper_price
+                                        # 計算成分百分比：成分價格 / 標準價格
+                                        composition_result, _ = calculate_composition_price(composition, metal_prices, usd_mid_rate)
+                                        if composition_result:
+                                            standard_price = composition_result['美元價格/噸']
+                                            lme_coefficient = (calculated_price / standard_price) * 100
+                                        else:
+                                            lme_coefficient = 0
                                     else:
                                         # 使用標準價格
                                         usd_price_for_lme = result['美元價格/噸']
                                         lme_coefficient = (usd_price_for_lme) / copper_price
                                     
-                                    st.metric(
-                                        "LME百分比",
-                                        f"{lme_coefficient:.2f}%"
-                                    )
+                                    # 根據模式顯示不同的標籤
+                                    if calc_mode == "係數計算" and 'lme_calc_type' in locals() and lme_calc_type == "銅價百分比":
+                                        st.metric(
+                                            "成分百分比",
+                                            f"{lme_coefficient:.2f}%"
+                                        )
+                                    else:
+                                        st.metric(
+                                            "LME百分比",
+                                            f"{lme_coefficient:.2f}%"
+                                        )
                                 else:
                                     st.metric(
                                         "成分",
@@ -747,8 +759,8 @@ def main():
                                     "數值": f"NT${result['台幣等值']/1000:,.2f}"
                                 }])], ignore_index=True)
                         else:
-                            # 在LME係數計算模式下，顯示計算後的價格
-                            if calc_mode == "LME係數計算" and 'lme_calc_type' in locals() and lme_calc_type == "複合成分係數":
+                            # 在係數計算模式下，顯示計算後的價格
+                            if calc_mode == "係數計算" and 'lme_calc_type' in locals() and lme_calc_type == "複合成分係數":
                                 final_price = result['美元價格/噸'] * final_percentage / 100
                                 twd_price = (final_price * usd_mid_rate) / 1000
                                 result_df = pd.concat([result_df, pd.DataFrame([{
@@ -758,7 +770,7 @@ def main():
                                     "項目": "成分價格 (TWD/公斤)", 
                                     "數值": f"NT${twd_price:,.2f}"
                                 }])], ignore_index=True)
-                            elif calc_mode == "LME係數計算" and 'lme_calc_type' in locals() and lme_calc_type == "銅價百分比":
+                            elif calc_mode == "係數計算" and 'lme_calc_type' in locals() and lme_calc_type == "銅價百分比":
                                 # 銅價百分比模式：LME銅價 × 百分比
                                 copper_price = metal_prices.get('銅', 0)
                                 if copper_price > 0:
@@ -792,10 +804,10 @@ def main():
                         if input_price is None:
                             copper_price = metal_prices.get('銅', 0)
                             if copper_price > 0:
-                                # 在LME係數計算模式下，顯示LME係數
-                                if calc_mode == "LME係數計算" and 'lme_calc_type' in locals() and lme_calc_type == "複合成分係數":
+                                # 在係數計算模式下，顯示LME係數
+                                if calc_mode == "係數計算" and 'lme_calc_type' in locals() and lme_calc_type == "複合成分係數":
                                     final_price = result['美元價格/噸'] * final_percentage / 100
-                                    lme_coefficient = (final_price) / copper_price
+                                    lme_coefficient = (final_price / copper_price) * 100
                                     result_df = pd.concat([result_df, pd.DataFrame([{
                                         "項目": "LME百分比",
                                         "數值": f"{lme_coefficient:.2f}%"
@@ -803,16 +815,22 @@ def main():
                                         "項目": "LME銅價",
                                         "數值": f"${copper_price:,.2f}"
                                     }])], ignore_index=True)
-                                elif calc_mode == "LME係數計算" and 'lme_calc_type' in locals() and lme_calc_type == "銅價百分比":
+                                elif calc_mode == "係數計算" and 'lme_calc_type' in locals() and lme_calc_type == "銅價百分比":
                                     user_percentage = copper_percentage
                                     calculated_price = copper_price * user_percentage / 100
-                                    lme_coefficient = (calculated_price) / copper_price
+                                    # 計算成分百分比：成分價格 / 標準價格
+                                    composition_result, _ = calculate_composition_price(composition, metal_prices, usd_mid_rate)
+                                    if composition_result:
+                                        standard_price = composition_result['美元價格/噸']
+                                        composition_percentage = (calculated_price / standard_price) * 100
+                                    else:
+                                        composition_percentage = 0
                                     result_df = pd.concat([result_df, pd.DataFrame([{
-                                        "項目": "LME百分比",
-                                        "數值": f"{lme_coefficient:.2f}%"
+                                        "項目": "成分百分比",
+                                        "數值": f"{composition_percentage:.2f}%"
                                     }, {
-                                        "項目": "LME銅價",
-                                        "數值": f"${copper_price:,.2f}"
+                                        "項目": "標準價格",
+                                        "數值": f"${standard_price:,.2f}"
                                     }])], ignore_index=True)
                                 else:
                                     # 標準模式顯示LME百分比
@@ -828,17 +846,11 @@ def main():
                         if input_price is not None:
                             if input_currency == "TWD":
                                 result_df = pd.concat([result_df, pd.DataFrame([{
-                                    "項目": "美元等值",
-                                    "數值": f"${result['美元等值']:,.2f}"
-                                }, {
                                     "項目": "成分百分比",
                                     "數值": f"{result['百分比']:.2f}%"
                                 }])], ignore_index=True)
                             else:
                                 result_df = pd.concat([result_df, pd.DataFrame([{
-                                    "項目": "台幣等值",
-                                    "數值": f"NT${result['台幣等值']:,.2f}"
-                                }, {
                                     "項目": "成分百分比",
                                     "數值": f"{result['百分比']:.2f}%"
                                 }])], ignore_index=True)
@@ -848,7 +860,7 @@ def main():
                                 copper_price = metal_prices.get('銅', 0)
                                 if copper_price > 0:
                                     if input_currency == "TWD":
-                                        usd_price_for_lme = result['美元等值']
+                                        usd_price_for_lme = result['美元等值'] * 1000  # 轉換為每噸
                                     else:
                                         usd_price_for_lme = input_price
                                     
@@ -881,10 +893,10 @@ def main():
                             elif result['百分比'] >= 150:
                                 st.warning(f"⚠️ 警告：輸入價格過高，成分百分比為 {result['百分比']:.2f}%")
                 
-                else:  # LME係數計算
-                    # LME係數計算
-                    # 檢查是否在LME係數計算模式下
-                    if calc_mode == "LME係數計算":
+                else:  # 係數計算
+                    # 係數計算
+                    # 檢查是否在係數計算模式下
+                    if calc_mode == "係數計算":
                         # 確保 lme_calc_type 有定義
                         if 'lme_calc_type' in locals() and lme_calc_type == "複合成分係數":
                             # 複合成分係數計算邏輯
@@ -900,12 +912,12 @@ def main():
                                 # 3. 計算LME係數：(計算價格) / 銅價
                                 copper_price = metal_prices.get('銅')
                                 if copper_price:
-                                    lme_coefficient = (calculated_price * 1000) / copper_price
+                                    lme_coefficient = (calculated_price / copper_price) * 100
                                 else:
                                     lme_coefficient = 0
                                 
                                 st.markdown("---")
-                                st.subheader("📊 LME係數計算結果")
+                                st.subheader("📊 係數計算結果")
                                 
                                 # 顯示計算結果
                                 col1, col2, col3 = st.columns(3)
@@ -991,7 +1003,7 @@ def main():
                                     reverse_percentage = 0
                                 
                                 st.markdown("---")
-                                st.subheader("📊 LME係數計算結果")
+                                st.subheader("📊 係數計算結果")
                                 
                                 # 顯示計算結果
                                 col1, col2, col3 = st.columns(3)
@@ -1009,16 +1021,16 @@ def main():
                                     )
                                 
                                 with col3:
-                                    # 計算LME係數
-                                    lme_coefficient = (calculated_price * 1000) / copper_price
+                                    # 計算成分百分比
+                                    composition_percentage = (calculated_price / standard_price) * 100
                                     st.metric(
-                                        "LME百分比",
-                                        f"{lme_coefficient:.2f}%"
+                                        "成分百分比",
+                                        f"{composition_percentage:.2f}%"
                                     )
                                 
                                 # 詳細結果
                                 st.markdown("**詳細計算結果**")
-                                lme_coefficient = (calculated_price * 1000) / copper_price
+                                composition_percentage = (calculated_price / standard_price) * 100
                                 detail_df = pd.DataFrame([{
                                     "項目": "計算公式",
                                     "數值": f"LME銅價 × {user_percentage}%"
@@ -1029,14 +1041,14 @@ def main():
                                     "項目": "成分價格 (TWD/公斤)",
                                     "數值": f"NT${twd_price:,.2f}"
                                 }, {
-                                    "項目": "LME百分比",
-                                    "數值": f"{lme_coefficient:.2f}%"
-                                }, {
-                                    "項目": "當前銅價",
-                                    "數值": f"${copper_price:,.2f}"
+                                    "項目": "成分百分比",
+                                    "數值": f"{composition_percentage:.2f}%"
                                 }, {
                                     "項目": "標準價格",
                                     "數值": f"${standard_price:,.2f}"
+                                }, {
+                                    "項目": "當前銅價",
+                                    "數值": f"${copper_price:,.2f}"
                                 }])
                                 
                                 st.dataframe(detail_df, use_container_width=True, hide_index=True)
@@ -1059,22 +1071,23 @@ def main():
             
             # 預設的批量計算組合
             batch_compositions = [
-                {"銅": 70, "鋅": 30},
-                {"銅": 80, "鋅": 20},
-                {"銅": 90, "鋅": 10},
-                {"銅": 95, "鋅": 5},
-                {"銅": 98, "鋅": 2}
+                {"銅": 65, "鋅": 35},  # C2680
+                {"銅": 70, "鋅": 30},  # C2600
+                {"銅": 94, "錫": 6},   # 磷青銅
+                {"銅": 100, "鋅": 0}   # 紅銅
             ]
             
             if st.button("計算常見成分組合"):
                 batch_results = []
-                for comp in batch_compositions:
+                composition_names = ["C2680", "C2600", "磷青銅", "紅銅"]
+                for i, comp in enumerate(batch_compositions):
                     batch_result, _ = calculate_composition_price(comp, metal_prices, usd_mid_rate)
                     if batch_result:
                         batch_results.append({
-                            "成分": batch_result["成分"],
+                            "成分": composition_names[i],
                             "銅含量": f"{comp.get('銅', 0)}%",
                             "鋅含量": f"{comp.get('鋅', 0)}%",
+                            "錫含量": f"{comp.get('錫', 0)}%",
                             "美元價格/噸": f"${batch_result['美元價格/噸']:,.0f}",
                             "台幣價格/公斤": f"NT${batch_result['台幣價格/公斤']:,.2f}"
                         })
