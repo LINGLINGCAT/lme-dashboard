@@ -603,7 +603,7 @@ def main():
                                     )
                             else:
                                 # 在LME係數計算模式下，顯示計算後的價格
-                                if calc_mode == "LME係數計算" and 'lme_calc_type' in locals() and lme_calc_type == "複合成分係數":
+                                if calc_mode == "係數計算" and 'lme_calc_type' in locals() and lme_calc_type == "複合成分係數":
                                     final_price = result['美元價格/噸'] * final_percentage / 100
                                     st.metric(
                                         "成分價格 (USD/噸)",
@@ -643,7 +643,7 @@ def main():
                                     )
                             else:
                                 # 在LME係數計算模式下，顯示計算後的價格
-                                if calc_mode == "LME係數計算" and 'lme_calc_type' in locals() and lme_calc_type == "複合成分係數":
+                                if calc_mode == "係數計算" and 'lme_calc_type' in locals() and lme_calc_type == "複合成分係數":
                                     final_price = result['美元價格/噸'] * final_percentage / 100
                                     twd_price = (final_price * usd_mid_rate) / 1000
                                     st.metric(
