@@ -254,8 +254,14 @@ def main():
             st.metric("記憶體使用率", f"{memory_usage.percent}%")
         
         with col2:
-            disk_usage = psutil.disk_usage('.')
-            st.metric("磁碟使用率", f"{disk_usage.percent}%")
+            try:
+                # 使用絕對路徑避免 Windows 路徑問題
+                current_dir = os.path.abspath('.')
+                disk_usage = psutil.disk_usage(current_dir)
+                st.metric("磁碟使用率", f"{disk_usage.percent}%")
+            except Exception as e:
+                st.metric("磁碟使用率", "無法取得")
+                st.caption(f"錯誤: {str(e)}")
         
         # 版本資訊
         st.markdown("**版本資訊**")

@@ -15,11 +15,17 @@ st.set_page_config(
 admin_pages_css = ""
 if not is_admin():
     admin_pages_css = """
-    [data-testid="stSidebarNav"] > ul > li:nth-child(4),
-    [data-testid="stSidebarNav"] > ul > li:nth-child(5),
-    [data-testid="stSidebarNav"] > ul > li:nth-child(6),
-    [data-testid="stSidebarNav"] > ul > li:nth-child(7),
-    [data-testid="stSidebarNav"] > ul > li:nth-child(8) {
+    /* 隱藏管理員頁面：使用更精確的選擇器 */
+    /* 隱藏包含"數據分析"、"系統設定"、"管理員功能"的連結 */
+    [data-testid="stSidebarNav"] a[href*="數據分析"],
+    [data-testid="stSidebarNav"] a[href*="系統設定"],
+    [data-testid="stSidebarNav"] a[href*="管理員功能"] {
+        display: none !important;
+    }
+    /* 隱藏對應的 li 元素 */
+    [data-testid="stSidebarNav"] li:has(a[href*="數據分析"]),
+    [data-testid="stSidebarNav"] li:has(a[href*="系統設定"]),
+    [data-testid="stSidebarNav"] li:has(a[href*="管理員功能"]) {
         display: none !important;
     }
     """

@@ -106,12 +106,14 @@ def check_password() -> bool:
             password = st.text_input("密碼", type="password", key="password_input")
             
             if st.button("登入", type="primary", use_container_width=True):
-                if auth.verify_password(password):
+                # 檢查是否為管理員密碼
+                admin_password = os.getenv('ADMIN_PASSWORD_HASH')
+                is_admin_login = admin_password and auth.hash_password(password) == admin_password
+                
+                # 檢查是否為一般用戶密碼或管理員密碼
+                if auth.verify_password(password) or is_admin_login:
                     st.session_state.authenticated = True
-                    # 檢查是否為管理員密碼
-                    admin_password = os.getenv('ADMIN_PASSWORD_HASH', 
-                                            '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918')  # "admin"的SHA256
-                    if auth.hash_password(password) == admin_password:
+                    if is_admin_login:
                         st.session_state.is_admin = True
                     auth.reset_attempts()
                     st.success("登入成功！")

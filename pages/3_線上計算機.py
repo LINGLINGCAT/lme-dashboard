@@ -396,16 +396,11 @@ def main():
             # 使用與預設成分相同的顯示方式
             st.markdown("**請輸入各金屬成分百分比：**")
             
-            # 創建輸入表格
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                cu_percent = st.number_input("銅 (%)", min_value=0.0, max_value=100.0, value=70.0, step=0.1, key="cu_input")
-                sn_percent = st.number_input("錫 (%)", min_value=0.0, max_value=100.0, value=0.0, step=0.1, key="sn_input")
-            
-            with col2:
-                zn_percent = st.number_input("鋅 (%)", min_value=0.0, max_value=100.0, value=30.0, step=0.1, key="zn_input")
-                other_percent = st.number_input("其他 (%)", min_value=0.0, max_value=100.0, value=0.0, step=0.1, key="other_input")
+            # 使用更緊湊的排版，避免右邊空白
+            cu_percent = st.number_input("銅 (%)", min_value=0.0, max_value=100.0, value=70.0, step=0.1, key="cu_input")
+            zn_percent = st.number_input("鋅 (%)", min_value=0.0, max_value=100.0, value=30.0, step=0.1, key="zn_input")
+            sn_percent = st.number_input("錫 (%)", min_value=0.0, max_value=100.0, value=0.0, step=0.1, key="sn_input")
+            other_percent = st.number_input("其他 (%)", min_value=0.0, max_value=100.0, value=0.0, step=0.1, key="other_input")
             
             # 組合成分字典
             if cu_percent > 0:
@@ -419,10 +414,35 @@ def main():
                 
             # 顯示當前成分（與預設成分相同的格式）
             if composition:
-                st.info(f"已選擇 自定義: {composition}")
+                # 使用與預設成分完全相同的顯示格式
+                st.markdown(f"""
+                <div style="
+                    background-color: #e8f4fd;
+                    border: 1px solid #bee5eb;
+                    border-radius: 0.375rem;
+                    padding: 1rem;
+                    margin: 0.5rem 0;
+                    color: #0c5460;
+                    font-weight: 500;
+                ">
+                    <strong>已選擇 自定義:</strong> {composition}
+                </div>
+                """, unsafe_allow_html=True)
         else:
             composition = DEFAULT_COMPOSITIONS[selected_composition].copy()
-            st.info(f"已選擇 {selected_composition}: {composition}")
+            st.markdown(f"""
+            <div style="
+                background-color: #e8f4fd;
+                border: 1px solid #bee5eb;
+                border-radius: 0.375rem;
+                padding: 1rem;
+                margin: 0.5rem 0;
+                color: #0c5460;
+                font-weight: 500;
+            ">
+                <strong>已選擇 {selected_composition}:</strong> {composition}
+            </div>
+            """, unsafe_allow_html=True)
         
         # 檢查成分總和
         total_percentage = sum(composition.values())
@@ -448,8 +468,8 @@ def main():
                     st.markdown("---")
                     st.markdown("**📊 標準價格**")
                     
-                    # 顯示標準價格
-                    col_price1, col_price2 = st.columns(2)
+                    # 顯示標準價格 - 調整排版
+                    col_price1, col_price2, col_price3 = st.columns(3)
                     
                     with col_price1:
                         st.metric(
@@ -471,24 +491,27 @@ def main():
                             if lme_calc_type == "複合成分係數":
                                 # 複合成分係數模式：顯示LME係數
                                 lme_coefficient = (result['美元價格/噸']) / copper_price
-                                st.metric(
-                                    "LME百分比",
-                                    f"{lme_coefficient:.2f}%"
-                                )
+                                with col_price3:
+                                    st.metric(
+                                        "LME百分比",
+                                        f"{lme_coefficient:.2f}%"
+                                    )
                             else:
                                 # 銅價百分比模式：顯示LME係數
                                 lme_coefficient = (result['美元價格/噸']) / copper_price
-                                st.metric(
-                                    "LME百分比",
-                                    f"{lme_coefficient:.2f}%"
-                                )
+                                with col_price3:
+                                    st.metric(
+                                        "LME百分比",
+                                        f"{lme_coefficient:.2f}%"
+                                    )
                         else:
                             # 標準模式：顯示LME百分比
                             lme_percentage = (result['美元價格/噸'] / copper_price) * 100
-                            st.metric(
-                                "LME百分比",
-                                f"{lme_percentage:.2f}%"
-                            )
+                            with col_price3:
+                                st.metric(
+                                    "LME百分比",
+                                    f"{lme_percentage:.2f}%"
+                                )
     
     with col2:
         # 計算模式選擇
@@ -554,7 +577,7 @@ def main():
                 usd_buy = pd.to_numeric(usd_row['即期買入'].iloc[0], errors='coerce')
                 usd_sell = pd.to_numeric(usd_row['即期賣出'].iloc[0], errors='coerce')
                 usd_mid_rate = (usd_buy + usd_sell) / 2
-                st.metric("即時匯率", f"1 USD = {usd_mid_rate:.2f} TWD")
+                st.metric("即時匯率", f"1 USD = {usd_mid_rate:.3f} TWD")
             else:
                 st.error("無法取得美金匯率")
                 usd_mid_rate = 32.0  # 預設匯率
