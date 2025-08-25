@@ -287,11 +287,16 @@ def show_new_quotation():
             st.success(f"已新增 {product_name}")
     
     # 顯示品項列表
-    if st.session_state.items:
+    if st.session_state.items and len(st.session_state.items) > 0:
         st.subheader("已新增品項")
         
         # 創建DataFrame
-        items_df = pd.DataFrame(st.session_state.items)
+        try:
+            items_df = pd.DataFrame(st.session_state.items)
+        except Exception as e:
+            st.error(f"創建數據表格失敗：{e}")
+            st.write("品項數據：", st.session_state.items)
+            return
         
         # 顯示表格
         st.dataframe(items_df, use_container_width=True)

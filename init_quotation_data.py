@@ -7,6 +7,94 @@ def init_sample_data():
     conn = sqlite3.connect('quotation_system.db')
     cursor = conn.cursor()
     
+    # 先創建表格（如果不存在）
+    # 創建客戶/供應商表
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS partners (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            partner_code VARCHAR(20) UNIQUE,
+            partner_name VARCHAR(100),
+            partner_type TEXT CHECK(partner_type IN ('CUSTOMER', 'SUPPLIER', 'BOTH')),
+            contact_person VARCHAR(50),
+            phone VARCHAR(20),
+            email VARCHAR(100),
+            address TEXT,
+            tax_id VARCHAR(20),
+            payment_terms VARCHAR(100),
+            credit_limit DECIMAL(15,2),
+            is_active BOOLEAN DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # 創建報價單主表
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS quotations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            quotation_no VARCHAR(20) UNIQUE,
+            quotation_date DATE,
+            quotation_type TEXT CHECK(quotation_type IN ('BUY', 'SELL')),
+            customer_id INTEGER,
+            currency TEXT CHECK(currency IN ('TWD', 'USD')),
+            total_amount DECIMAL(15,2),
+            tax_rate DECIMAL(5,2) DEFAULT 0.05,
+            tax_amount DECIMAL(15,2),
+            total_with_tax DECIMAL(15,2),
+            invoice_required BOOLEAN DEFAULT 0,
+            invoice_no VARCHAR(20),
+            status TEXT CHECK(status IN ('DRAFT', 'SENT', 'ACCEPTED', 'REJECTED', 'EXPIRED')) DEFAULT 'DRAFT',
+            valid_until DATE,
+            notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (customer_id) REFERENCES partners(id)
+        )
+    ''')
+    
+    # 創建報價明細表
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS quotation_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            quotation_id INTEGER,
+            product_name VARCHAR(50),
+            product_category VARCHAR(30),
+            quantity DECIMAL(10,2),
+            unit VARCHAR(20),
+            unit_price DECIMAL(15,2),
+            total_price DECIMAL(15,2),
+            market_price DECIMAL(15,2),
+            price_difference DECIMAL(15,2),
+            notes TEXT,
+            FOREIGN KEY (quotation_id) REFERENCES quotations(id)
+        )
+    ''')
+    
+    # 創建市場價格表
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS market_prices (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_name VARCHAR(50),
+            price_date DATE,
+            price DECIMAL(15,2),
+            currency TEXT CHECK(currency IN ('TWD', 'USD')),
+            source VARCHAR(50),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # 創建報價歷史記錄表
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS quotation_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            quotation_id INTEGER,
+            action_type TEXT CHECK(action_type IN ('CREATED', 'SENT', 'VIEWED', 'ACCEPTED', 'REJECTED', 'EXPIRED')),
+            action_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            action_by VARCHAR(50),
+            notes TEXT,
+            FOREIGN KEY (quotation_id) REFERENCES quotations(id)
+        )
+    ''')
+    
     # 清空現有數據
     cursor.execute("DELETE FROM partners")
     cursor.execute("DELETE FROM market_prices")

@@ -235,7 +235,7 @@ def main():
                 data_files.append({
                     "檔案名": file.name,
                     "大小": f"{file.stat().st_size / 1024:.1f} KB",
-                    "修改時間": datetime.fromtimestamp(file.stat().st_mtime).strftime('%Y-%m-%d %H:%M')
+                    "修改時間": datetime.datetime.fromtimestamp(file.stat().st_mtime).strftime('%Y-%m-%d %H:%M')
                 })
         
         if data_files:
