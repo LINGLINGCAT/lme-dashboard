@@ -160,6 +160,19 @@ def main():
             csp_data = { '磷': f"NT${price_phosphor:,.2f}", '青': f"NT${price_bronze:,.2f}", '紅': f"NT${price_red_copper:,.2f}", '錫': f"US${price_tin:,.2f}", '鋅': f"US${price_zinc:,.2f}" }
             st.dataframe(pd.DataFrame([csp_data]), use_container_width=True, hide_index=True)
 
+            # 5. 保存到歷史數據
+            today = datetime.now().strftime('%Y-%m-%d')
+            history_data = {
+                '日期': [today],
+                'CSP磷': [f"NT${price_phosphor:,.2f}"],
+                'CSP青': [f"NT${price_bronze:,.2f}"],
+                'CSP紅': [f"NT${price_red_copper:,.2f}"],
+                'CSP錫': [f"US${price_tin:,.2f}"],
+                'CSP鋅': [f"US${price_zinc:,.2f}"]
+            }
+            history_df = pd.DataFrame(history_data)
+            save_to_history(history_df)
+
         except Exception as e:
             st.error(f"計算過程中發生錯誤: {e}")
 
