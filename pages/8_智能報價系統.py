@@ -287,7 +287,7 @@ def show_new_quotation():
             st.success(f"已新增 {product_name}")
     
     # 顯示品項列表
-    if st.session_state.items and len(st.session_state.items) > 0:
+    if hasattr(st.session_state, 'items') and isinstance(st.session_state.items, list) and len(st.session_state.items) > 0:
         st.subheader("已新增品項")
         
         # 創建DataFrame
