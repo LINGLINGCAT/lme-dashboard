@@ -44,9 +44,28 @@ REAL_DATA_PATHS = [
 ]
 
 def load_historical_data():
-    """載入歷史數據 - 優先使用本地data目錄"""
+    """載入歷史數據 - 優先使用真實LME數據源"""
     
-    # 優先檢查本地data目錄
+    # 優先檢查真實LME數據源
+    real_data_paths = [
+        Path("Z:/LME.xlsm"),  # 主要數據源
+        Path("Z:/LME/LME.xlsm"),  # 備用路徑
+        Path("Z:/LME/LME.xlsx"),  # 備用路徑
+        Path("Z:/LME/LME.xls"),   # 備用路徑
+    ]
+    
+    for path in real_data_paths:
+        if path.exists():
+            try:
+                # 載入Excel文件，指定工作表名稱
+                df = pd.read_excel(path, sheet_name="3M RECORD")
+                if not df.empty:
+                    st.success(f"✅ 已載入真實LME數據：{path} (工作表: 3M RECORD)")
+                    return df
+            except Exception as e:
+                st.warning(f"⚠️ 載入 {path} 失敗：{e}")
+    
+    # 如果真實數據源不可用，檢查本地data目錄
     local_data_paths = [
         Path("data/csp_history.csv"),
         Path("data/lme_prices.csv"),
