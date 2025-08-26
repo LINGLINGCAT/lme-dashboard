@@ -242,15 +242,15 @@ def main():
     # 處理數據格式
     if not df.empty and '日期' in df.columns:
         # 確保日期欄位被正確解析
-        df['日期'] = pd.to_datetime(df['日期'], errors='coerce')
+        df['日期'] = pd.to_datetime(df['日期'], format='%Y-%m-%d', errors='coerce')
         
-        # 清理價格數據中的貨幣符號（但不移除行）
+        # 清理價格數據中的貨幣符號
         price_columns = [col for col in df.columns if col != '日期']
         for col in price_columns:
             if col in df.columns:
-                # 轉換為字符串並清理貨幣符號
+                # 轉換為字符串
                 df[col] = df[col].astype(str)
-                # 清理各種貨幣符號和格式 - 先移除貨幣符號，再移除逗號
+                # 清理貨幣符號和格式
                 df[col] = df[col].str.replace('NT$', '').str.replace('US$', '').str.replace('$', '').str.replace(',', '').str.strip()
                 # 轉換為數值
                 df[col] = pd.to_numeric(df[col], errors='coerce')
@@ -348,7 +348,7 @@ def main():
         # 更靈活的價格欄位檢測
         price_columns = []
         for col in df.columns:
-            if any(keyword in col.upper() for keyword in ['CSP', 'PRICE', '價格', '銅', '錫', '鋅', '磷', '青', '紅', 'FX_', 'USD', 'TWD', '匯率']):
+            if col != '日期' and any(keyword in col.upper() for keyword in ['CSP', 'PRICE', '價格', '銅', '錫', '鋅', '磷', '青', '紅', 'FX_', 'USD', 'TWD', '匯率']):
                 price_columns.append(col)
         st.metric("價格指標", len(price_columns))
     
