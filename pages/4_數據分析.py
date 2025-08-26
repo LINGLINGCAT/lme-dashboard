@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import requests
 from pathlib import Path
 from utils.auth import check_password, logout, is_admin
+import numpy as np
 
 # 檢查密碼認證
 check_password()
@@ -15,8 +16,13 @@ if not is_admin():
     st.error("🔒 此頁面僅限管理員訪問")
     st.stop()
 
-# --- 頁面設定 ---
-st.set_page_config(page_title="數據分析", page_icon="📊", layout="wide")
+# 頁面配置
+st.set_page_config(
+    page_title="數據分析",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
 # --- 數據目錄 ---
 DATA_DIR = Path("data")
@@ -38,108 +44,97 @@ REAL_DATA_PATHS = [
 ]
 
 def load_historical_data():
-    """載入歷史數據"""
-    # 優先嘗試載入主要數據源 Z:/LME.xlsm
-    main_data_path = Path("Z:/LME.xlsm")
+    """載入歷史數據 - 優先使用本地data目錄"""
     
-    if main_data_path.exists():
-        try:
-            # 載入Excel文件，指定工作表名稱
-            df = pd.read_excel(main_data_path, sheet_name="3M RECORD")
-            st.success(f"✅ 已載入主要數據源：{main_data_path} (工作表: 3M RECORD)")
-            
-            # 確保日期欄位被正確解析為datetime
-            if '日期' in df.columns:
-                df['日期'] = pd.to_datetime(df['日期'], errors='coerce')
-            
-            return df
-            
-        except Exception as e:
-            st.warning(f"⚠️ 載入主要數據源失敗：{e}")
-            st.info("💡 嘗試載入備用數據源...")
+    # 優先檢查本地data目錄
+    local_data_paths = [
+        Path("data/csp_history.csv"),
+        Path("data/lme_prices.csv"),
+        Path("data/historical_data.csv")
+    ]
     
-    # 如果主要數據源失敗，嘗試其他路徑
-    for data_path in REAL_DATA_PATHS[1:]:  # 跳過第一個（主要數據源）
-        if data_path.exists():
-            try:
-                # 根據文件擴展名選擇載入方法
-                if data_path.suffix.lower() in ['.xls', '.xlsx', '.xlsm']:
-                    # 載入Excel文件，指定工作表名稱
-                    df = pd.read_excel(data_path, sheet_name="3M RECORD")
-                    st.success(f"✅ 已載入備用Excel數據：{data_path} (工作表: 3M RECORD)")
-                else:
-                    # 載入CSV文件
-                    df = pd.read_csv(data_path)
-                    st.success(f"✅ 已載入備用CSV數據：{data_path}")
-                
-                # 確保日期欄位被正確解析為datetime
-                if '日期' in df.columns:
-                    df['日期'] = pd.to_datetime(df['日期'], errors='coerce')
-                
-                return df
-                    
-            except Exception as e:
-                st.warning(f"⚠️ 載入 {data_path} 失敗：{e}")
-                continue
-    
-    # 如果所有真實數據路徑都失敗，顯示路徑檢查
-    st.error("❌ 無法找到真實LME數據文件")
-    st.info("🔍 正在檢查以下路徑：")
-    for path in REAL_DATA_PATHS:
+    for path in local_data_paths:
         if path.exists():
-            st.success(f"✅ 找到文件：{path}")
-        else:
-            st.error(f"❌ 文件不存在：{path}")
+            try:
+                df = pd.read_csv(path)
+                if not df.empty:
+                    st.success(f"✅ 已載入本地數據：{path}")
+                    return df
+            except Exception as e:
+                st.warning(f"⚠️ 載入 {path} 失敗：{e}")
     
-    # 嘗試列出Z:/LME目錄下的所有文件
-    try:
-        lme_dir = Path("Z:/LME")
-        if lme_dir.exists():
-            st.info("📁 Z:/LME 目錄內容：")
-            files = list(lme_dir.glob("*"))
-            if files:
-                # 分類顯示文件
-                csv_files = [f for f in files if f.is_file() and f.suffix.lower() == '.csv']
-                excel_files = [f for f in files if f.is_file() and f.suffix.lower() in ['.xls', '.xlsx', '.xlsm']]
-                other_files = [f for f in files if f.is_file() and f.suffix.lower() not in ['.csv', '.xls', '.xlsx', '.xlsm']]
-                dirs = [f for f in files if f.is_dir()]
-                
-                if csv_files:
-                    st.write("📊 **CSV數據文件：**")
-                    for file in csv_files:
-                        st.write(f"  📄 {file.name}")
-                
-                if excel_files:
-                    st.write("📈 **Excel文件：**")
-                    for file in excel_files:
-                        st.write(f"  📄 {file.name}")
-                
-                if other_files:
-                    st.write("📄 **其他文件：**")
-                    for file in other_files:
-                        st.write(f"  📄 {file.name}")
-                
-                if dirs:
-                    st.write("📁 **目錄：**")
-                    for dir in dirs:
-                        st.write(f"  📁 {dir.name}/")
+    # 如果本地沒有數據，提供上傳功能
+    st.warning("⚠️ 本地沒有歷史數據文件")
+    
+    # 數據上傳功能
+    st.subheader("📤 上傳歷史數據")
+    uploaded_file = st.file_uploader(
+        "選擇CSV或Excel文件",
+        type=['csv', 'xlsx', 'xls'],
+        help="請上傳包含LME價格數據的文件"
+    )
+    
+    if uploaded_file is not None:
+        try:
+            if uploaded_file.name.endswith('.csv'):
+                df = pd.read_csv(uploaded_file)
             else:
-                st.warning("Z:/LME 目錄為空")
-        else:
-            st.error("❌ Z:/LME 目錄不存在")
-    except Exception as e:
-        st.error(f"❌ 無法訪問 Z:/LME 目錄：{e}")
+                df = pd.read_excel(uploaded_file)
+            
+            if not df.empty:
+                st.success(f"✅ 成功上傳數據：{uploaded_file.name}")
+                st.write(f"📊 數據行數：{len(df)}")
+                st.write(f"📋 欄位：{list(df.columns)}")
+                
+                # 保存到本地
+                save_path = Path("data") / f"uploaded_{uploaded_file.name}"
+                Path("data").mkdir(exist_ok=True)
+                
+                if uploaded_file.name.endswith('.csv'):
+                    df.to_csv(save_path, index=False)
+                else:
+                    df.to_excel(save_path, index=False)
+                
+                st.success(f"💾 數據已保存到：{save_path}")
+                return df
+                
+        except Exception as e:
+            st.error(f"❌ 上傳失敗：{e}")
     
-    # 使用示例數據作為備用
-    if HISTORY_FILE.exists():
-        df = pd.read_csv(HISTORY_FILE)
-        st.info("ℹ️ 使用示例數據進行演示")
-        # 確保日期欄位被正確解析為datetime
-        if '日期' in df.columns:
-            df['日期'] = pd.to_datetime(df['日期'], errors='coerce')
-        return df
+    # 如果都沒有數據，使用示例數據
+    st.info("📋 使用示例數據進行演示")
+    return create_sample_data()
+
+def create_sample_data():
+    """創建示例數據"""
+    dates = pd.date_range(start='2024-01-01', end='2024-12-31', freq='D')
     
-    return pd.DataFrame()
+    # 模擬LME價格數據
+    np.random.seed(42)
+    base_prices = {
+        'CSP磷': 2500,
+        'CSP青': 2800,
+        'CSP紅': 3200,
+        '銅': 8500,
+        '鋁': 2200
+    }
+    
+    data = []
+    for date in dates:
+        for product, base_price in base_prices.items():
+            # 添加隨機波動
+            price = base_price + np.random.normal(0, base_price * 0.02)
+            price = max(price, base_price * 0.8)  # 確保價格不會太低
+            
+            data.append({
+                '日期': date,
+                '品項': product,
+                '價格': round(price, 2),
+                '幣值': 'USD'
+            })
+    
+    df = pd.DataFrame(data)
+    return df
 
 def create_price_trend_chart(df, price_columns):
     """創建價格趨勢圖"""
