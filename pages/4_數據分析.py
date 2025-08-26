@@ -250,7 +250,7 @@ def main():
             if col in df.columns:
                 # 轉換為字符串並清理貨幣符號
                 df[col] = df[col].astype(str)
-                # 清理各種貨幣符號和格式
+                # 清理各種貨幣符號和格式 - 先移除貨幣符號，再移除逗號
                 df[col] = df[col].str.replace('NT$', '').str.replace('US$', '').str.replace('$', '').str.replace(',', '').str.strip()
                 # 轉換為數值
                 df[col] = pd.to_numeric(df[col], errors='coerce')
