@@ -148,7 +148,7 @@ def create_price_trend_chart(df, price_columns):
             # 確保價格數據是字符串格式，然後清理
             price_data = df[col].astype(str)
             # 清理各種貨幣符號和格式
-            clean_values = price_data.str.replace('NT$', '').str.replace('US$', '').str.replace('$', '').str.replace(',', '').str.replace(' ', '')
+            clean_values = price_data.str.replace('NT$', '').str.replace('US$', '').str.replace('$', '').str.replace(',', '').str.strip()
             numeric_values = pd.to_numeric(clean_values, errors='coerce')
             
             fig.add_trace(go.Scatter(
@@ -181,7 +181,7 @@ def create_volatility_analysis(df, price_columns):
             # 確保價格數據是字符串格式，然後清理
             price_data = df[col].astype(str)
             # 清理各種貨幣符號和格式
-            clean_values = price_data.str.replace('NT$', '').str.replace('US$', '').str.replace('$', '').str.replace(',', '').str.replace(' ', '')
+            clean_values = price_data.str.replace('NT$', '').str.replace('US$', '').str.replace('$', '').str.replace(',', '').str.strip()
             numeric_values = pd.to_numeric(clean_values, errors='coerce')
             
             # 計算波動性指標
@@ -214,7 +214,7 @@ def create_correlation_matrix(df, price_columns):
             # 確保價格數據是字符串格式，然後清理
             price_data = df[col].astype(str)
             # 清理各種貨幣符號和格式
-            clean_values = price_data.str.replace('NT$', '').str.replace('US$', '').str.replace('$', '').str.replace(',', '').str.replace(' ', '')
+            clean_values = price_data.str.replace('NT$', '').str.replace('US$', '').str.replace('$', '').str.replace(',', '').str.strip()
             numeric_values = pd.to_numeric(clean_values, errors='coerce')
             correlation_data[col] = numeric_values
     
@@ -249,7 +249,9 @@ def main():
         for col in price_columns:
             if col in df.columns:
                 # 轉換為字符串並清理貨幣符號
-                df[col] = df[col].astype(str).str.replace('NT$', '').str.replace('US$', '').str.replace('$', '').str.replace(',', '').str.strip()
+                df[col] = df[col].astype(str)
+                # 清理各種貨幣符號和格式
+                df[col] = df[col].str.replace('NT$', '').str.replace('US$', '').str.replace('$', '').str.replace(',', '').str.strip()
                 # 轉換為數值
                 df[col] = pd.to_numeric(df[col], errors='coerce')
     
@@ -377,7 +379,7 @@ def main():
             for col in selected_prices:
                 # 確保價格數據是字符串格式，然後清理
                 price_data = df[col].astype(str)
-                clean_values = price_data.str.replace('NT$', '').str.replace('US$', '').str.replace(',', '')
+                clean_values = price_data.str.replace('NT$', '').str.replace('US$', '').str.replace('$', '').str.replace(',', '').str.strip()
                 numeric_values = pd.to_numeric(clean_values, errors='coerce')
                 
                 if len(numeric_values.dropna()) > 0:
