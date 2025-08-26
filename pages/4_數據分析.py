@@ -44,30 +44,16 @@ REAL_DATA_PATHS = [
 ]
 
 def load_historical_data():
-    """載入歷史數據 - 優先使用真實LME數據源"""
+    """載入歷史數據 - 優先使用本地data目錄"""
     
-    # 優先檢查真實LME數據源
-    real_data_paths = [
-        Path("Z:/LME.xlsm"),  # 主要數據源
-        Path("Z:/LME/LME.xlsm"),  # 備用路徑
-        Path("Z:/LME/LME.xlsx"),  # 備用路徑
-        Path("Z:/LME/LME.xls"),   # 備用路徑
-    ]
-    
-    for path in real_data_paths:
-        if path.exists():
-            try:
-                # 載入Excel文件，指定工作表名稱
-                df = pd.read_excel(path, sheet_name="3M RECORD")
-                if not df.empty:
-                    st.success(f"✅ 已載入真實LME數據：{path} (工作表: 3M RECORD)")
-                    return df
-            except Exception as e:
-                st.warning(f"⚠️ 載入 {path} 失敗：{e}")
-    
-    # 如果真實數據源不可用，檢查本地data目錄
+    # 優先檢查本地data目錄（適用於雲端部署）
     local_data_paths = [
+        Path("data/lme_updated_data.csv"),  # 優先載入包含完整資料的文件
+        Path("data/lme_updated_data.xlsx"),
         Path("data/csp_history.csv"),
+        Path("data/csp_history.xlsx"),
+        Path("data/lme_historical_data.csv"),
+        Path("data/lme_historical_data.xlsx"),
         Path("data/lme_prices.csv"),
         Path("data/historical_data.csv")
     ]
@@ -75,9 +61,14 @@ def load_historical_data():
     for path in local_data_paths:
         if path.exists():
             try:
-                df = pd.read_csv(path)
+                if path.suffix == '.csv':
+                    df = pd.read_csv(path)
+                else:
+                    df = pd.read_excel(path)
+                
                 if not df.empty:
                     st.success(f"✅ 已載入本地數據：{path}")
+                    st.info(f"📊 數據統計：{len(df)} 行，{len(df.columns)} 欄位")
                     return df
             except Exception as e:
                 st.warning(f"⚠️ 載入 {path} 失敗：{e}")
@@ -87,6 +78,8 @@ def load_historical_data():
     
     # 數據上傳功能
     st.subheader("📤 上傳歷史數據")
+    st.info("💡 提示：您可以運行 `python import_historical_data.py` 來導入 LME.xlsm 文件中的歷史數據")
+    
     uploaded_file = st.file_uploader(
         "選擇CSV或Excel文件",
         type=['csv', 'xlsx', 'xls'],
@@ -162,21 +155,39 @@ def create_price_trend_chart(df, price_columns):
     
     fig = go.Figure()
     
-    for col in price_columns:
-        if col in df.columns:
-            # 確保價格數據是字符串格式，然後清理
-            price_data = df[col].astype(str)
-            # 清理各種貨幣符號和格式
-            clean_values = price_data.str.replace('NT$', '').str.replace('US$', '').str.replace('$', '').str.replace(',', '').str.strip()
-            numeric_values = pd.to_numeric(clean_values, errors='coerce')
-            
-            fig.add_trace(go.Scatter(
-                x=df['日期'],
-                y=numeric_values,
-                mode='lines+markers',
-                name=col,
-                line=dict(width=2)
-            ))
+    # 檢查是否為長格式數據
+    if '品項' in df.columns and '價格' in df.columns:
+        # 長格式數據處理
+        for product in price_columns:
+            product_data = df[df['品項'] == product].copy()
+            if not product_data.empty:
+                # 清理價格數據
+                price_data = product_data['價格'].astype(str)
+                clean_values = price_data.str.replace('NT$', '').str.replace('US$', '').str.replace('$', '').str.replace(',', '').str.strip()
+                numeric_values = pd.to_numeric(clean_values, errors='coerce')
+                
+                fig.add_trace(go.Scatter(
+                    x=product_data['日期'],
+                    y=numeric_values,
+                    mode='lines+markers',
+                    name=product,
+                    line=dict(width=2)
+                ))
+    else:
+        # 寬格式數據處理（原有邏輯）
+        for col in price_columns:
+            if col in df.columns:
+                price_data = df[col].astype(str)
+                clean_values = price_data.str.replace('NT$', '').str.replace('US$', '').str.replace('$', '').str.replace(',', '').str.strip()
+                numeric_values = pd.to_numeric(clean_values, errors='coerce')
+                
+                fig.add_trace(go.Scatter(
+                    x=df['日期'],
+                    y=numeric_values,
+                    mode='lines+markers',
+                    name=col,
+                    line=dict(width=2)
+                ))
     
     fig.update_layout(
         title="CSP 價格歷史趨勢",
@@ -195,28 +206,53 @@ def create_volatility_analysis(df, price_columns):
     
     volatility_data = []
     
-    for col in price_columns:
-        if col in df.columns:
-            # 確保價格數據是字符串格式，然後清理
-            price_data = df[col].astype(str)
-            # 清理各種貨幣符號和格式
-            clean_values = price_data.str.replace('NT$', '').str.replace('US$', '').str.replace('$', '').str.replace(',', '').str.strip()
-            numeric_values = pd.to_numeric(clean_values, errors='coerce')
-            
-            # 計算波動性指標
-            if len(numeric_values.dropna()) > 1:
-                volatility = numeric_values.pct_change().std() * 100
-                max_price = numeric_values.max()
-                min_price = numeric_values.min()
-                avg_price = numeric_values.mean()
+    # 檢查是否為長格式數據
+    if '品項' in df.columns and '價格' in df.columns:
+        # 長格式數據處理
+        for product in price_columns:
+            product_data = df[df['品項'] == product].copy()
+            if not product_data.empty:
+                # 清理價格數據
+                price_data = product_data['價格'].astype(str)
+                clean_values = price_data.str.replace('NT$', '').str.replace('US$', '').str.replace('$', '').str.replace(',', '').str.strip()
+                numeric_values = pd.to_numeric(clean_values, errors='coerce')
                 
-                volatility_data.append({
-                    '產品': col,
-                    '平均價格': avg_price,
-                    '最高價格': max_price,
-                    '最低價格': min_price,
-                    '波動率 (%)': volatility
-                })
+                # 計算波動性指標
+                if len(numeric_values.dropna()) > 1:
+                    volatility = numeric_values.pct_change().std() * 100
+                    max_price = numeric_values.max()
+                    min_price = numeric_values.min()
+                    avg_price = numeric_values.mean()
+                    
+                    volatility_data.append({
+                        '產品': product,
+                        '平均價格': avg_price,
+                        '最高價格': max_price,
+                        '最低價格': min_price,
+                        '波動率 (%)': volatility
+                    })
+    else:
+        # 寬格式數據處理（原有邏輯）
+        for col in price_columns:
+            if col in df.columns:
+                price_data = df[col].astype(str)
+                clean_values = price_data.str.replace('NT$', '').str.replace('US$', '').str.replace('$', '').str.replace(',', '').str.strip()
+                numeric_values = pd.to_numeric(clean_values, errors='coerce')
+                
+                # 計算波動性指標
+                if len(numeric_values.dropna()) > 1:
+                    volatility = numeric_values.pct_change().std() * 100
+                    max_price = numeric_values.max()
+                    min_price = numeric_values.min()
+                    avg_price = numeric_values.mean()
+                    
+                    volatility_data.append({
+                        '產品': col,
+                        '平均價格': avg_price,
+                        '最高價格': max_price,
+                        '最低價格': min_price,
+                        '波動率 (%)': volatility
+                    })
     
     return pd.DataFrame(volatility_data)
 
@@ -225,25 +261,50 @@ def create_correlation_matrix(df, price_columns):
     if df.empty:
         return None
     
-    # 準備數據
-    correlation_data = {}
-    
-    for col in price_columns:
-        if col in df.columns:
-            # 確保價格數據是字符串格式，然後清理
-            price_data = df[col].astype(str)
-            # 清理各種貨幣符號和格式
-            clean_values = price_data.str.replace('NT$', '').str.replace('US$', '').str.replace('$', '').str.replace(',', '').str.strip()
-            numeric_values = pd.to_numeric(clean_values, errors='coerce')
-            correlation_data[col] = numeric_values
-    
-    if len(correlation_data) < 2:
-        return None
-    
-    correlation_df = pd.DataFrame(correlation_data)
-    correlation_matrix = correlation_df.corr()
-    
-    return correlation_matrix
+    # 檢查是否為長格式數據
+    if '品項' in df.columns and '價格' in df.columns:
+        # 長格式數據處理：轉換為寬格式
+        correlation_data = {}
+        
+        for product in price_columns:
+            product_data = df[df['品項'] == product].copy()
+            if not product_data.empty:
+                # 清理價格數據
+                price_data = product_data['價格'].astype(str)
+                clean_values = price_data.str.replace('NT$', '').str.replace('US$', '').str.replace('$', '').str.replace(',', '').str.strip()
+                numeric_values = pd.to_numeric(clean_values, errors='coerce')
+                
+                # 按日期排序並設置索引
+                product_data_sorted = product_data.sort_values('日期')
+                product_data_sorted['clean_price'] = numeric_values
+                correlation_data[product] = product_data_sorted.set_index('日期')['clean_price']
+        
+        if len(correlation_data) < 2:
+            return None
+        
+        # 創建寬格式DataFrame並計算相關性
+        correlation_df = pd.DataFrame(correlation_data)
+        correlation_matrix = correlation_df.corr()
+        
+        return correlation_matrix
+    else:
+        # 寬格式數據處理（原有邏輯）
+        correlation_data = {}
+        
+        for col in price_columns:
+            if col in df.columns:
+                price_data = df[col].astype(str)
+                clean_values = price_data.str.replace('NT$', '').str.replace('US$', '').str.replace('$', '').str.replace(',', '').str.strip()
+                numeric_values = pd.to_numeric(clean_values, errors='coerce')
+                correlation_data[col] = numeric_values
+        
+        if len(correlation_data) < 2:
+            return None
+        
+        correlation_df = pd.DataFrame(correlation_data)
+        correlation_matrix = correlation_df.corr()
+        
+        return correlation_matrix
 
 def main():
     # 側邊欄登出按鈕
@@ -260,19 +321,20 @@ def main():
     
     # 處理數據格式
     if not df.empty and '日期' in df.columns:
-        # 確保日期欄位被正確解析
-        df['日期'] = pd.to_datetime(df['日期'], format='%Y-%m-%d', errors='coerce')
+        # 確保日期欄位被正確解析 - 支援多種日期格式
+        df['日期'] = pd.to_datetime(df['日期'], errors='coerce')
         
-        # 清理價格數據中的貨幣符號
-        price_columns = [col for col in df.columns if col != '日期']
-        for col in price_columns:
-            if col in df.columns:
-                # 轉換為字符串
-                df[col] = df[col].astype(str)
-                # 清理貨幣符號和格式
-                df[col] = df[col].str.replace('NT$', '').str.replace('US$', '').str.replace('$', '').str.replace(',', '').str.strip()
-                # 轉換為數值
-                df[col] = pd.to_numeric(df[col], errors='coerce')
+        # 清理價格數據中的貨幣符號（僅對寬格式數據）
+        if '品項' not in df.columns:  # 寬格式數據
+            price_columns = [col for col in df.columns if col != '日期']
+            for col in price_columns:
+                if col in df.columns:
+                    # 轉換為字符串
+                    df[col] = df[col].astype(str)
+                    # 清理貨幣符號和格式
+                    df[col] = df[col].str.replace('NT$', '').str.replace('US$', '').str.replace('$', '').str.replace(',', '').str.strip()
+                    # 轉換為數值
+                    df[col] = pd.to_numeric(df[col], errors='coerce')
     
     # 如果數據為空，提供手動輸入路徑的選項
     if df.empty:
@@ -355,21 +417,32 @@ def main():
         try:
             min_date = df['日期'].min()
             max_date = df['日期'].max()
-            if pd.notna(min_date) and pd.notna(max_date):
+            if pd.notna(min_date) and pd.notna(max_date) and hasattr(min_date, 'strftime'):
                 date_range = f"{min_date.strftime('%Y-%m-%d')} 至 {max_date.strftime('%Y-%m-%d')}"
             else:
                 date_range = "日期格式錯誤"
-        except:
-            date_range = "日期格式錯誤"
+        except Exception as e:
+            date_range = f"日期格式錯誤: {str(e)[:20]}"
         st.metric("時間範圍", date_range)
     
     with col3:
-        # 更靈活的價格欄位檢測
-        price_columns = []
-        for col in df.columns:
-            if col != '日期' and any(keyword in col.upper() for keyword in ['CSP', 'PRICE', '價格', '銅', '錫', '鋅', '磷', '青', '紅', 'FX_', 'USD', 'TWD', '匯率']):
-                price_columns.append(col)
-        st.metric("價格指標", len(price_columns))
+        # 檢測數據格式並識別價格欄位
+        if '品項' in df.columns and '價格' in df.columns:
+            # 長格式數據：每個產品一行
+            unique_products = df['品項'].unique()
+            # 確保所有產品名稱都是字符串
+            price_columns = [str(product) for product in unique_products if pd.notna(product)]
+            st.metric("價格指標", len(price_columns))
+            st.info(f"📊 檢測到長格式數據，產品：{', '.join(price_columns)}")
+        else:
+            # 寬格式數據：每個產品一欄
+            price_columns = []
+            for col in df.columns:
+                if col != '日期' and any(keyword in col.upper() for keyword in ['CSP', 'PRICE', '價格', '銅', '錫', '鋅', '磷', '青', '紅', 'FX_', 'USD', 'TWD', '匯率', '中間匯率']):
+                    price_columns.append(col)
+            st.metric("價格指標", len(price_columns))
+            if price_columns:
+                st.info(f"📊 檢測到寬格式數據，產品：{', '.join(price_columns)}")
     
     st.markdown("---")
     
@@ -395,21 +468,43 @@ def main():
             st.markdown("**統計摘要**")
             summary_data = []
             
-            for col in selected_prices:
-                # 確保價格數據是字符串格式，然後清理
-                price_data = df[col].astype(str)
-                clean_values = price_data.str.replace('NT$', '').str.replace('US$', '').str.replace('$', '').str.replace(',', '').str.strip()
-                numeric_values = pd.to_numeric(clean_values, errors='coerce')
-                
-                if len(numeric_values.dropna()) > 0:
-                    summary_data.append({
-                        '指標': col,
-                        '最新價格': numeric_values.iloc[-1],
-                        '平均價格': numeric_values.mean(),
-                        '最高價格': numeric_values.max(),
-                        '最低價格': numeric_values.min(),
-                        '標準差': numeric_values.std()
-                    })
+            # 檢查是否為長格式數據
+            if '品項' in df.columns and '價格' in df.columns:
+                # 長格式數據處理
+                for product in selected_prices:
+                    product_data = df[df['品項'] == product].copy()
+                    if not product_data.empty:
+                        # 清理價格數據
+                        price_data = product_data['價格'].astype(str)
+                        clean_values = price_data.str.replace('NT$', '').str.replace('US$', '').str.replace('$', '').str.replace(',', '').str.strip()
+                        numeric_values = pd.to_numeric(clean_values, errors='coerce')
+                        
+                        if len(numeric_values.dropna()) > 0:
+                            summary_data.append({
+                                '指標': product,
+                                '最新價格': numeric_values.iloc[-1],
+                                '平均價格': numeric_values.mean(),
+                                '最高價格': numeric_values.max(),
+                                '最低價格': numeric_values.min(),
+                                '標準差': numeric_values.std()
+                            })
+            else:
+                # 寬格式數據處理（原有邏輯）
+                for col in selected_prices:
+                    if col in df.columns:
+                        price_data = df[col].astype(str)
+                        clean_values = price_data.str.replace('NT$', '').str.replace('US$', '').str.replace('$', '').str.replace(',', '').str.strip()
+                        numeric_values = pd.to_numeric(clean_values, errors='coerce')
+                        
+                        if len(numeric_values.dropna()) > 0:
+                            summary_data.append({
+                                '指標': col,
+                                '最新價格': numeric_values.iloc[-1],
+                                '平均價格': numeric_values.mean(),
+                                '最高價格': numeric_values.max(),
+                                '最低價格': numeric_values.min(),
+                                '標準差': numeric_values.std()
+                            })
             
             if summary_data:
                 summary_df = pd.DataFrame(summary_data)
@@ -466,13 +561,21 @@ def main():
         correlation_matrix = create_correlation_matrix(df, price_columns)
         
         if correlation_matrix is not None:
-            # 相關性熱力圖
+            # 相關性熱力圖 - 修正顏色映射以正確顯示負相關
             fig_corr = px.imshow(
                 correlation_matrix,
                 title="價格相關性矩陣",
-                color_continuous_scale='RdBu',
-                aspect='auto'
+                color_continuous_scale='RdBu_r',  # 使用紅藍色階，正確顯示負相關
+                aspect='auto',
+                zmin=-1,  # 確保負值正確顯示
+                zmax=1    # 確保正值正確顯示
             )
+            
+            # 更新顏色條和懸停信息
+            fig_corr.update_traces(
+                hovertemplate="%{x} vs %{y}<br>相關性: %{z:.3f}<extra></extra>"
+            )
+            
             st.plotly_chart(fig_corr, use_container_width=True)
             
             # 相關性表格
@@ -482,13 +585,19 @@ def main():
             # 相關性解釋
             st.markdown("**相關性解釋**")
             st.markdown("""
-            - **1.0**: 完全正相關
+            - **1.0**: 完全正相關（兩個指標同步上升）
             - **0.7-1.0**: 強正相關
             - **0.3-0.7**: 中等正相關
             - **0.0-0.3**: 弱相關
             - **0.0**: 無相關
-            - **負值**: 負相關（一個上升時另一個下降）
+            - **-0.3-0.0**: 弱負相關
+            - **-0.7--0.3**: 中等負相關
+            - **-1.0--0.7**: 強負相關
+            - **-1.0**: 完全負相關（一個上升時另一個下降）
             """)
+            
+            # 特別說明負相關的意義
+            st.info("💡 **負相關說明**：當相關性為負值時，表示兩個指標呈反向關係。例如，磷價格與中間匯率的相關性為 -0.211，表示當磷價格上升時，中間匯率傾向於下降。")
     
     st.markdown("---")
     

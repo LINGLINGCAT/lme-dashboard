@@ -91,6 +91,63 @@ def fetch_bot_daily_fx():
     except Exception as e:
         return pd.DataFrame(), f"台銀匯率數據獲取失敗: {e}"
 
+def save_lme_data_to_csv(lme_data, fx_data):
+    """保存LME和FX數據到CSV文件"""
+    try:
+        from pathlib import Path
+        from datetime import datetime
+        
+        # 確保data目錄存在
+        data_dir = Path("data")
+        data_dir.mkdir(exist_ok=True)
+        
+        # 準備數據
+        today = datetime.now().strftime('%Y-%m-%d')
+        
+        # 合併LME和FX數據
+        combined_data = {}
+        combined_data['日期'] = today
+        
+        # 添加LME數據
+        if lme_data:
+            for metal, price in lme_data.items():
+                if price and price != 'N/A':
+                    combined_data[f'LME_{metal}'] = price
+        
+        # 添加FX數據
+        if fx_data:
+            for currency, rate in fx_data.items():
+                if rate and rate != 'N/A':
+                    combined_data[f'FX_{currency}'] = rate
+        
+        # 檢查是否已有今天的數據
+        csv_path = data_dir / "lme_daily_data.csv"
+        
+        if csv_path.exists():
+            # 讀取現有數據
+            existing_df = pd.read_csv(csv_path)
+            
+            # 檢查今天是否已有數據
+            if today not in existing_df['日期'].values:
+                # 添加新數據
+                new_row = pd.DataFrame([combined_data])
+                updated_df = pd.concat([existing_df, new_row], ignore_index=True)
+                updated_df.to_csv(csv_path, index=False, encoding='utf-8-sig')
+                st.success(f"✅ 已保存今日數據到 {csv_path}")
+            else:
+                st.info(f"ℹ️ 今日數據已存在於 {csv_path}")
+        else:
+            # 創建新文件
+            new_df = pd.DataFrame([combined_data])
+            new_df.to_csv(csv_path, index=False, encoding='utf-8-sig')
+            st.success(f"✅ 已創建並保存數據到 {csv_path}")
+        
+        return True
+        
+    except Exception as e:
+        st.error(f"❌ 保存數據失敗：{e}")
+        return False
+
 # --- 主程式 ---
 def main():
     # 側邊欄登出按鈕
@@ -183,6 +240,28 @@ def main():
         history_df = pd.read_csv(HISTORY_FILE, parse_dates=["日期"])
         history_df.set_index("日期", inplace=True)
         st.line_chart(history_df[['CSP磷', 'CSP青', 'CSP紅']])
+
+    # 在頁面底部添加保存按鈕
+    st.markdown("---")
+    st.subheader("💾 數據保存")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("💾 保存今日數據", type="primary"):
+            if 'lme_data' in st.session_state and 'fx_data' in st.session_state:
+                save_lme_data_to_csv(st.session_state.lme_data, st.session_state.fx_data)
+            else:
+                st.warning("⚠️ 請先載入LME和FX數據")
+    
+    with col2:
+        if st.button("📊 查看歷史數據"):
+            csv_path = Path("data/lme_daily_data.csv")
+            if csv_path.exists():
+                df = pd.read_csv(csv_path)
+                st.dataframe(df, use_container_width=True)
+            else:
+                st.info("📋 尚未有歷史數據")
 
 
 def save_to_history(df, date_col="日期"):

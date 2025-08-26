@@ -109,6 +109,76 @@ def calculate_prices(df_lme, df_fx):
     except Exception as e:
         return pd.DataFrame(), f"價格計算失敗: {e}"
 
+def save_realtime_data(df_csp, df_lme, df_fx):
+    """保存即時數據到CSV文件"""
+    try:
+        from pathlib import Path
+        
+        # 確保data目錄存在
+        data_dir = Path("data")
+        data_dir.mkdir(exist_ok=True)
+        
+        # 準備數據
+        today = datetime.now().strftime('%Y-%m-%d')
+        current_time = datetime.now().strftime('%H:%M:%S')
+        
+        # 合併數據
+        combined_data = {}
+        combined_data['日期'] = today
+        combined_data['時間'] = current_time
+        
+        # 添加CSP價格數據
+        if not df_csp.empty:
+            for col in df_csp.columns:
+                value = df_csp.iloc[0][col]
+                # 清理貨幣符號
+                clean_value = str(value).replace('NT$', '').replace('US$', '').replace('$', '').replace(',', '').strip()
+                combined_data[f'CSP_{col}'] = clean_value
+        
+        # 添加LME原始數據
+        if not df_lme.empty:
+            for _, row in df_lme.iterrows():
+                metal_name = row['名稱'].replace('LME', '').strip()
+                price = str(row['最新價']).replace(',', '').strip()
+                combined_data[f'LME_{metal_name}'] = price
+        
+        # 添加匯率數據
+        if not df_fx.empty:
+            usd_row = df_fx[df_fx['幣別代碼'] == 'USD']
+            if not usd_row.empty:
+                combined_data['FX_USD_TWD'] = str(usd_row.iloc[0]['即期中間價'])
+        
+        # 保存到CSV
+        csv_path = data_dir / "lme_realtime_data.csv"
+        
+        if csv_path.exists():
+            # 讀取現有數據
+            existing_df = pd.read_csv(csv_path)
+            
+            # 檢查今天這個時間是否已有數據
+            today_time_key = f"{today}_{current_time}"
+            existing_today_time = existing_df.apply(lambda x: f"{x['日期']}_{x['時間']}", axis=1)
+            
+            if today_time_key not in existing_today_time.values:
+                # 添加新數據
+                new_row = pd.DataFrame([combined_data])
+                updated_df = pd.concat([existing_df, new_row], ignore_index=True)
+                updated_df.to_csv(csv_path, index=False, encoding='utf-8-sig')
+                st.success(f"✅ 已保存即時數據到 {csv_path}")
+            else:
+                st.info(f"ℹ️ 此時間點的數據已存在")
+        else:
+            # 創建新文件
+            new_df = pd.DataFrame([combined_data])
+            new_df.to_csv(csv_path, index=False, encoding='utf-8-sig')
+            st.success(f"✅ 已創建並保存即時數據到 {csv_path}")
+        
+        return True
+        
+    except Exception as e:
+        st.error(f"❌ 保存數據失敗：{e}")
+        return False
+
 def main():
     # 側邊欄登出按鈕
     with st.sidebar:
@@ -151,6 +221,25 @@ def main():
             st.error(calc_error)
         else:
             st.dataframe(df_csp, use_container_width=True, hide_index=True)
+            
+            # 保存數據按鈕
+            st.markdown("---")
+            st.subheader("💾 數據保存")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if st.button("💾 保存即時數據", type="primary"):
+                    save_realtime_data(df_csp, df_lme, df_fx)
+            
+            with col2:
+                if st.button("📊 查看歷史數據"):
+                    csv_path = Path("data/lme_realtime_data.csv")
+                    if csv_path.exists():
+                        df = pd.read_csv(csv_path)
+                        st.dataframe(df, use_container_width=True)
+                    else:
+                        st.info("📋 尚未有歷史數據")
 
 if __name__ == "__main__":
     main()

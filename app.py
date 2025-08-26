@@ -16,16 +16,18 @@ admin_pages_css = ""
 if not is_admin():
     admin_pages_css = """
     /* 隱藏管理員頁面：使用更精確的選擇器 */
-    /* 隱藏包含"數據分析"、"系統設定"、"管理員功能"的連結 */
+    /* 隱藏包含"數據分析"、"系統設定"、"管理員功能"、"智能報價系統"的連結 */
     [data-testid="stSidebarNav"] a[href*="數據分析"],
     [data-testid="stSidebarNav"] a[href*="系統設定"],
-    [data-testid="stSidebarNav"] a[href*="管理員功能"] {
+    [data-testid="stSidebarNav"] a[href*="管理員功能"],
+    [data-testid="stSidebarNav"] a[href*="智能報價系統"] {
         display: none !important;
     }
     /* 隱藏對應的 li 元素 */
     [data-testid="stSidebarNav"] li:has(a[href*="數據分析"]),
     [data-testid="stSidebarNav"] li:has(a[href*="系統設定"]),
-    [data-testid="stSidebarNav"] li:has(a[href*="管理員功能"]) {
+    [data-testid="stSidebarNav"] li:has(a[href*="管理員功能"]),
+    [data-testid="stSidebarNav"] li:has(a[href*="智能報價系統"]) {
         display: none !important;
     }
     """
@@ -67,6 +69,7 @@ if is_admin():
         - **數據分析**: 歷史數據視覺化與趨勢分析
         - **系統設定**: 自定義密碼、更新頻率等設定
         - **使用說明**: 完整操作指南與故障排除
+        - **智能報價系統**: 完整的商業報價管理系統
         
         ### 💡 特色功能
         - 🔄 自動數據更新（每5秒）

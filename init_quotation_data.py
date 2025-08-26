@@ -1,224 +1,89 @@
+#!/usr/bin/env python3
+"""
+初始化智能報價系統數據
+"""
+
+import os
+import sys
 import sqlite3
 from datetime import datetime, timedelta
 import random
 
-def init_sample_data():
-    """初始化示例數據"""
-    conn = sqlite3.connect('quotation_system.db')
-    cursor = conn.cursor()
+def init_quotation_database():
+    """初始化智能報價系統數據庫"""
+    print("🔧 初始化智能報價系統數據庫...")
     
-    # 先創建表格（如果不存在）
-    # 創建客戶/供應商表
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS partners (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            partner_code VARCHAR(20) UNIQUE,
-            partner_name VARCHAR(100),
-            partner_type TEXT CHECK(partner_type IN ('CUSTOMER', 'SUPPLIER', 'BOTH')),
-            contact_person VARCHAR(50),
-            phone VARCHAR(20),
-            email VARCHAR(100),
-            address TEXT,
-            tax_id VARCHAR(20),
-            payment_terms VARCHAR(100),
-            credit_limit DECIMAL(15,2),
-            is_active BOOLEAN DEFAULT 1,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
+    try:
+        # 複製初始化腳本
+        if os.path.exists('quotation_system/init_data.py'):
+            print("✅ 找到初始化腳本")
+            
+            # 執行初始化
+            import subprocess
+            result = subprocess.run([sys.executable, 'quotation_system/init_data.py'], 
+                                  capture_output=True, text=True)
+            
+            if result.returncode == 0:
+                print("✅ 數據庫初始化成功")
+                return True
+            else:
+                print(f"❌ 數據庫初始化失敗: {result.stderr}")
+                return False
+        else:
+            print("❌ 找不到初始化腳本: quotation_system/init_data.py")
+            return False
+            
+    except Exception as e:
+        print(f"❌ 初始化過程出錯: {e}")
+        return False
+
+def check_database_status():
+    """檢查數據庫狀態"""
+    print("\n📊 檢查數據庫狀態...")
     
-    # 創建報價單主表
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS quotations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            quotation_no VARCHAR(20) UNIQUE,
-            quotation_date DATE,
-            quotation_type TEXT CHECK(quotation_type IN ('BUY', 'SELL')),
-            customer_id INTEGER,
-            currency TEXT CHECK(currency IN ('TWD', 'USD')),
-            total_amount DECIMAL(15,2),
-            tax_rate DECIMAL(5,2) DEFAULT 0.05,
-            tax_amount DECIMAL(15,2),
-            total_with_tax DECIMAL(15,2),
-            invoice_required BOOLEAN DEFAULT 0,
-            invoice_no VARCHAR(20),
-            status TEXT CHECK(status IN ('DRAFT', 'SENT', 'ACCEPTED', 'REJECTED', 'EXPIRED')) DEFAULT 'DRAFT',
-            valid_until DATE,
-            notes TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (customer_id) REFERENCES partners(id)
-        )
-    ''')
+    try:
+        conn = sqlite3.connect('quotation_system.db')
+        cursor = conn.cursor()
+        
+        # 檢查表格
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = cursor.fetchall()
+        
+        print(f"✅ 數據庫表格: {len(tables)} 個")
+        
+        # 檢查數據量
+        for table in ['partners', 'quotations', 'market_prices']:
+            cursor.execute(f"SELECT COUNT(*) FROM {table}")
+            count = cursor.fetchone()[0]
+            print(f"   {table}: {count} 筆數據")
+        
+        conn.close()
+        return True
+        
+    except Exception as e:
+        print(f"❌ 檢查數據庫狀態失敗: {e}")
+        return False
+
+def main():
+    """主函數"""
+    print("💰 智能報價系統初始化")
+    print("=" * 50)
     
-    # 創建報價明細表
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS quotation_items (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            quotation_id INTEGER,
-            product_name VARCHAR(50),
-            product_category VARCHAR(30),
-            quantity DECIMAL(10,2),
-            unit VARCHAR(20),
-            unit_price DECIMAL(15,2),
-            total_price DECIMAL(15,2),
-            market_price DECIMAL(15,2),
-            price_difference DECIMAL(15,2),
-            notes TEXT,
-            FOREIGN KEY (quotation_id) REFERENCES quotations(id)
-        )
-    ''')
-    
-    # 創建市場價格表
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS market_prices (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            product_name VARCHAR(50),
-            price_date DATE,
-            price DECIMAL(15,2),
-            currency TEXT CHECK(currency IN ('TWD', 'USD')),
-            source VARCHAR(50),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # 創建報價歷史記錄表
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS quotation_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            quotation_id INTEGER,
-            action_type TEXT CHECK(action_type IN ('CREATED', 'SENT', 'VIEWED', 'ACCEPTED', 'REJECTED', 'EXPIRED')),
-            action_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            action_by VARCHAR(50),
-            notes TEXT,
-            FOREIGN KEY (quotation_id) REFERENCES quotations(id)
-        )
-    ''')
-    
-    # 清空現有數據
-    cursor.execute("DELETE FROM partners")
-    cursor.execute("DELETE FROM market_prices")
-    cursor.execute("DELETE FROM quotations")
-    cursor.execute("DELETE FROM quotation_items")
-    cursor.execute("DELETE FROM quotation_history")
-    
-    # 插入示例客戶
-    sample_customers = [
-        ('C001', 'ABC金屬公司', 'SUPPLIER', '張經理', '02-1234-5678', 'zhang@abc.com', '台北市信義區信義路100號', '12345678', '月結30天', 1000000),
-        ('C002', 'XYZ製造公司', 'CUSTOMER', '李經理', '02-2345-6789', 'li@xyz.com', '新北市板橋區文化路200號', '23456789', '現金交易', 500000),
-        ('C003', 'DEF貿易公司', 'BOTH', '王經理', '02-3456-7890', 'wang@def.com', '台中市西區台灣大道300號', '34567890', '月結15天', 800000),
-        ('C004', 'GHI工業公司', 'CUSTOMER', '陳經理', '02-4567-8901', 'chen@ghi.com', '高雄市前金區中正路400號', '45678901', '預付50%', 300000),
-        ('C005', 'JKL材料公司', 'SUPPLIER', '劉經理', '02-5678-9012', 'liu@jkl.com', '桃園市中壢區環北路500號', '56789012', '月結45天', 1200000),
-    ]
-    
-    cursor.executemany('''
-        INSERT INTO partners (
-            partner_code, partner_name, partner_type, contact_person, phone, email, 
-            address, tax_id, payment_terms, credit_limit
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', sample_customers)
-    
-    # 插入示例市場價格
-    products = ['磷青銅', '紅銅', '錫', '鋅', '青銅']
-    currencies = ['TWD', 'USD']
-    
-    # 生成過去30天的市場價格
-    for i in range(30):
-        date = datetime.now() - timedelta(days=i)
-        for product in products:
-            for currency in currencies:
-                if currency == 'TWD':
-                    if product == '磷青銅':
-                        base_price = 285000
-                    elif product == '紅銅':
-                        base_price = 320000
-                    elif product == '錫':
-                        base_price = 950000
-                    elif product == '鋅':
-                        base_price = 120000
-                    else:  # 青銅
-                        base_price = 280000
-                else:  # USD
-                    if product == '磷青銅':
-                        base_price = 8500
-                    elif product == '紅銅':
-                        base_price = 9500
-                    elif product == '錫':
-                        base_price = 28000
-                    elif product == '鋅':
-                        base_price = 3500
-                    else:  # 青銅
-                        base_price = 8300
-                
-                # 添加隨機波動
-                variation = random.uniform(-0.05, 0.05)  # ±5%波動
-                price = base_price * (1 + variation)
-                
-                cursor.execute('''
-                    INSERT INTO market_prices (product_name, price_date, price, currency, source)
-                    VALUES (?, ?, ?, ?, ?)
-                ''', (product, date.date(), round(price, 2), currency, 'LME'))
-    
-    # 插入示例報價單
-    sample_quotations = [
-        ('SQ-20241230-001', '2024-12-30', 'SELL', 2, 'TWD', 2850000, 0.05, 142500, 2992500, 1, 'SENT', '2024-12-31', '磷青銅報價'),
-        ('BQ-20241230-001', '2024-12-30', 'BUY', 1, 'USD', 85000, 0.0, 0, 85000, 0, 'DRAFT', '2024-12-31', '紅銅採購'),
-        ('SQ-20241229-001', '2024-12-29', 'SELL', 3, 'TWD', 1900000, 0.05, 95000, 1995000, 1, 'ACCEPTED', '2024-12-30', '錫銷售'),
-        ('BQ-20241229-001', '2024-12-29', 'BUY', 5, 'USD', 70000, 0.0, 0, 70000, 0, 'REJECTED', '2024-12-30', '鋅採購'),
-    ]
-    
-    cursor.executemany('''
-        INSERT INTO quotations (
-            quotation_no, quotation_date, quotation_type, customer_id, currency,
-            total_amount, tax_rate, tax_amount, total_with_tax, invoice_required,
-            status, valid_until, notes
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', sample_quotations)
-    
-    # 插入示例報價明細
-    sample_items = [
-        (1, '磷青銅', '銅合金', 10.0, '噸', 285000, 2850000, 283000, 2000, 'C5191規格'),
-        (2, '紅銅', '純銅', 10.0, '噸', 8500, 85000, 8600, -100, 'C1100規格'),
-        (3, '錫', '純錫', 2.0, '噸', 950000, 1900000, 945000, 5000, 'Sn99.9規格'),
-        (4, '鋅', '純鋅', 20.0, '噸', 3500, 70000, 3600, -1000, 'Zn99.9規格'),
-    ]
-    
-    cursor.executemany('''
-        INSERT INTO quotation_items (
-            quotation_id, product_name, product_category, quantity, unit,
-            unit_price, total_price, market_price, price_difference, notes
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', sample_items)
-    
-    # 插入示例歷史記錄
-    sample_history = [
-        (1, 'CREATED', 'System', '報價單已創建'),
-        (1, 'SENT', 'User', '報價單已發送'),
-        (2, 'CREATED', 'System', '報價單已創建'),
-        (3, 'CREATED', 'System', '報價單已創建'),
-        (3, 'SENT', 'User', '報價單已發送'),
-        (3, 'ACCEPTED', 'Customer', '客戶已接受報價'),
-        (4, 'CREATED', 'System', '報價單已創建'),
-        (4, 'SENT', 'User', '報價單已發送'),
-        (4, 'REJECTED', 'Supplier', '供應商拒絕報價'),
-    ]
-    
-    cursor.executemany('''
-        INSERT INTO quotation_history (
-            quotation_id, action_type, action_by, notes
-        ) VALUES (?, ?, ?, ?)
-    ''', sample_history)
-    
-    conn.commit()
-    conn.close()
-    
-    print("✅ 示例數據初始化完成！")
-    print("📊 已創建：")
-    print("   - 5個客戶/供應商")
-    print("   - 300條市場價格記錄")
-    print("   - 4個示例報價單")
-    print("   - 4個報價明細")
-    print("   - 9條歷史記錄")
+    # 初始化數據庫
+    if init_quotation_database():
+        # 檢查狀態
+        check_database_status()
+        
+        print("\n🎉 初始化完成！")
+        print("\n🚀 啟動智能報價系統:")
+        print("   streamlit run pages/8_智能報價系統.py")
+        print("   或")
+        print("   cd quotation_system && streamlit run app.py")
+        
+        print("\n🧪 運行測試:")
+        print("   python test_quotation_system.py")
+    else:
+        print("\n❌ 初始化失敗，請檢查錯誤訊息")
 
 if __name__ == "__main__":
-    init_sample_data()
+    main()
