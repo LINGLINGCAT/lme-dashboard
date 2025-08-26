@@ -243,10 +243,8 @@ def main():
     if not df.empty and '日期' in df.columns:
         # 確保日期欄位被正確解析
         df['日期'] = pd.to_datetime(df['日期'], errors='coerce')
-        # 移除無效日期的行
-        df = df.dropna(subset=['日期'])
         
-        # 清理價格數據中的貨幣符號
+        # 清理價格數據中的貨幣符號（但不移除行）
         price_columns = [col for col in df.columns if col != '日期']
         for col in price_columns:
             if col in df.columns:
@@ -254,11 +252,6 @@ def main():
                 df[col] = df[col].astype(str).str.replace('NT$', '').str.replace('US$', '').str.replace('$', '').str.replace(',', '').str.strip()
                 # 轉換為數值
                 df[col] = pd.to_numeric(df[col], errors='coerce')
-        
-        # 檢查處理後的數據是否為空
-        if df.empty:
-            st.error("❌ 數據處理後為空，可能是日期格式問題")
-            return
     
     # 如果數據為空，提供手動輸入路徑的選項
     if df.empty:
