@@ -26,11 +26,20 @@ wheels/
 *.egg
 MANIFEST
 
-# 數據文件
-data/
-*.csv
-*.xlsx
-*.xls
+# 排除舊的數據文件，但保留新的 DATA.xlsx
+data/*.csv
+data/*.xls
+data/lme_*.xlsx
+data/csp_*.xlsx
+data/lme_*.csv
+data/csp_*.csv
+data/historical_*.xlsx
+data/historical_*.csv
+data/uploaded_*.xlsx
+data/uploaded_*.csv
+
+# 保留新的數據文件
+!data/DATA.xlsx
 
 # 日誌文件
 *.log
@@ -51,4 +60,13 @@ Thumbs.db
 # 虛擬環境
 venv/
 env/
-ENV/ 
+ENV/
+
+# 測試文件
+test_data/
+*.tmp
+*.temp
+
+# 文檔文件
+*.docx
+*.doc 
