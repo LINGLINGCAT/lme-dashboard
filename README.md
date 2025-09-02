@@ -55,17 +55,17 @@
 
 ## 如何推送程式碼並自動更新網頁
 
-1. **打開 Git Bash 或終端機**
+1. **打開終端機（推薦使用 PowerShell）**
 2. **切換到專案資料夾**
+   
+   **PowerShell (Windows 推薦):**
+   ```powershell
+   cd D:\ANACONDA\lme-dashboard
+   ```
    
    **Git Bash:**
    ```bash
    cd /d/ANACONDA/lme-dashboard
-   ```
-   
-   **PowerShell:**
-   ```powershell
-   cd D:\ANACONDA\lme-dashboard
    ```
    
    **Anaconda Prompt:**
@@ -501,17 +501,17 @@ MIT License
 ## 本地與雲端部署說明
 
 ### 本地開發流程
-1. 啟動終端機（Anaconda Prompt、Git Bash 或 PowerShell）
+1. 啟動終端機（推薦使用 PowerShell）
 2. 切換到專案資料夾
+   
+   **PowerShell (Windows 推薦):**
+   ```powershell
+   cd D:\ANACONDA\lme-dashboard
+   ```
    
    **Git Bash:**
    ```bash
    cd /d/ANACONDA/lme-dashboard
-   ```
-   
-   **PowerShell:**
-   ```powershell
-   cd D:\ANACONDA\lme-dashboard
    ```
    
    **Anaconda Prompt:**

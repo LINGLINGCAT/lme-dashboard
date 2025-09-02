@@ -405,16 +405,17 @@ def main():
             other_percent = st.number_input("其他 (%)", min_value=0.0, max_value=100.0, value=0.0, step=0.1, key="other_input")
             
             # 組合成分字典
-            if cu_percent > 0:
-                composition["銅"] = cu_percent
-            if sn_percent > 0:
-                composition["錫"] = sn_percent
-            if zn_percent > 0:
-                composition["鋅"] = zn_percent
-            if ni_percent > 0:
-                composition["鎳"] = ni_percent
-            if other_percent > 0:
-                composition["其他"] = other_percent
+            metals = [
+                ("銅", cu_percent),
+                ("錫", sn_percent),
+                ("鋅", zn_percent),
+                ("鎳", ni_percent),
+                ("其他", other_percent)
+            ]
+            
+            for metal, percent in metals:
+                if percent > 0:
+                    composition[metal] = percent
                 
             # 顯示當前成分（與預設成分相同的格式）
             if composition:
