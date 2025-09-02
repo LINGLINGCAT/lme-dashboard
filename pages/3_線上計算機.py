@@ -94,7 +94,7 @@ def parse_lme_formula(formula, metal_prices):
                     percentage = float(metal_match.group(2))
                     
                     # 轉換金屬代碼
-                    metal_map = {'cu': '銅', 'zn': '鋅', 'sn': '錫'}
+                    metal_map = {'cu': '銅', 'zn': '鋅', 'sn': '錫', 'ni': '鎳'}
                     metal_name = metal_map.get(metal_code, metal_code)
                     
                     if metal_name in metal_prices:
@@ -290,6 +290,7 @@ def get_metal_prices(df_lme):
     prices['銅'] = find_lme_name(df_calc, ['LME铜', 'LME銅'])
     prices['錫'] = find_lme_name(df_calc, ['LME锡', 'LME錫'])
     prices['鋅'] = find_lme_name(df_calc, ['LME锌', 'LME鋅'])
+    prices['鎳'] = find_lme_name(df_calc, ['LME镍', 'LME鎳'])
     
     # 檢查是否有缺失的價格
     missing_prices = [metal for metal, price in prices.items() if price is None]
@@ -400,6 +401,7 @@ def main():
             cu_percent = st.number_input("銅 (%)", min_value=0.0, max_value=100.0, value=70.0, step=0.1, key="cu_input")
             zn_percent = st.number_input("鋅 (%)", min_value=0.0, max_value=100.0, value=30.0, step=0.1, key="zn_input")
             sn_percent = st.number_input("錫 (%)", min_value=0.0, max_value=100.0, value=0.0, step=0.1, key="sn_input")
+            ni_percent = st.number_input("鎳 (%)", min_value=0.0, max_value=100.0, value=0.0, step=0.1, key="ni_input")
             other_percent = st.number_input("其他 (%)", min_value=0.0, max_value=100.0, value=0.0, step=0.1, key="other_input")
             
             # 組合成分字典
@@ -409,6 +411,8 @@ def main():
                 composition["錫"] = sn_percent
             if zn_percent > 0:
                 composition["鋅"] = zn_percent
+            if ni_percent > 0:
+                composition["鎳"] = ni_percent
             if other_percent > 0:
                 composition["其他"] = other_percent
                 
