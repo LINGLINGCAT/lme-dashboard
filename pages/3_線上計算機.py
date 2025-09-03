@@ -398,8 +398,8 @@ def main():
             st.markdown("**請輸入各金屬成分百分比：**")
             
             # 使用更緊湊的排版，避免右邊空白
-            cu_percent = st.number_input("銅 (%)", min_value=0.0, max_value=100.0, value=70.0, step=0.1, key="cu_input")
-            zn_percent = st.number_input("鋅 (%)", min_value=0.0, max_value=100.0, value=30.0, step=0.1, key="zn_input")
+            cu_percent = st.number_input("銅 (%)", min_value=0.0, max_value=100.0, value=0.0, step=0.1, key="cu_input")
+            zn_percent = st.number_input("鋅 (%)", min_value=0.0, max_value=100.0, value=0.0, step=0.1, key="zn_input")
             sn_percent = st.number_input("錫 (%)", min_value=0.0, max_value=100.0, value=0.0, step=0.1, key="sn_input")
             ni_percent = st.number_input("鎳 (%)", min_value=0.0, max_value=100.0, value=0.0, step=0.1, key="ni_input")
             other_percent = st.number_input("其他 (%)", min_value=0.0, max_value=100.0, value=0.0, step=0.1, key="other_input")
