@@ -12,20 +12,21 @@ import os
 # 添加當前目錄到 Python 路徑
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# 直接導入並執行 app.py 的內容
-# 這樣可以確保 Streamlit Cloud 使用正確的入口點，同時保持代碼的一致性
+# ★ 必須是第一個 Streamlit 指令，否則 Cloud 可能出現 "Error running app"
+st.set_page_config(
+    page_title="LME 即時報價看板",
+    page_icon="📈",
+    layout="wide"
+)
 
 # 嘗試導入認證模組
 try:
     from utils.auth import check_password, logout, is_admin
-except ImportError:
-    # 如果無法導入認證模組，創建簡單的替代函數
+except ImportError as e:
     def check_password():
         return True
-    
     def logout():
         st.rerun()
-    
     def is_admin():
         return True
 
@@ -38,12 +39,6 @@ except ImportError:
 
 # 檢查密碼認證
 check_password()
-
-st.set_page_config(
-    page_title="LME 即時報價看板",
-    page_icon="📈",
-    layout="wide"
-)
 
 # --- CSS to hide the main page from the sidebar and admin pages for non-admin users ---
 admin_pages_css = ""

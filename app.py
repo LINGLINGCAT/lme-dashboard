@@ -2,14 +2,15 @@ import streamlit as st
 from utils.auth import check_password, logout, is_admin
 from version import get_version_display
 
-# 檢查密碼認證
-check_password()
-
+# 必須是第一個 Streamlit 指令（Cloud 否則可能出現 Error running app）
 st.set_page_config(
     page_title="LME 即時報價看板",
     page_icon="📈",
     layout="wide"
 )
+
+# 檢查密碼認證
+check_password()
 
 # --- CSS to hide the main page from the sidebar and admin pages for non-admin users ---
 admin_pages_css = ""
